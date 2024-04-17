@@ -149,3 +149,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+## Tim Littlefair's Notes
+
+To build pcsc-sample:
+```mvn clean dependency:copy-dependencies package```
+
+To run pcsc-sample:
+```java -cp target/sample-pcsc-3.0.1.jar:target/dependency/* com.github.devnied.emvpcsccard.Main```
+
+If a message is returned that no terminals were found ensure that PCSC library support is present.
+On Ubuntu:
+```sudo apt install pcsc-tools pcscd libpcsclite1```
+
