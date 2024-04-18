@@ -152,11 +152,14 @@ limitations under the License.
 
 ## Tim Littlefair's Notes
 
-To build pcsc-sample:
+To build library, upstream sample and TL hacked version of sample:
 ```mvn clean dependency:copy-dependencies package```
 
+To build tl-sample only after upper level build:
+```mvn clean dependency:copy-dependencies package -rf :tl-pcsc```
+
 To run pcsc-sample:
-```java -cp target/sample-pcsc-3.0.1.jar:target/dependency/* com.github.devnied.emvpcsccard.Main```
+```java -cp tl-pcsc/target/tl-pcsc-3.0.2-SNAPSHOT.jar:tl-pcsc/target/dependency/*:tl-pcsc com.github.devnied.emvpcsccard.Main```
 
 If a message is returned that no terminals were found ensure that PCSC library support is present.
 On Ubuntu:
