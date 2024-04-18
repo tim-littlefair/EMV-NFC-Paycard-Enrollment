@@ -50,6 +50,7 @@
 	<modules>
 		<module>library</module>
 		<module>sample-pcsc</module>
+		<module>tl-pcsc</module>
 	</modules>
 
 	<properties>
