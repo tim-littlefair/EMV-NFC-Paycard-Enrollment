@@ -54,7 +54,7 @@ public class PcscProvider implements IProvider {
 			ret = new byte[nbByte];
 			System.arraycopy(buffer.array(), 0, ret, 0, ret.length);
 		} catch (CardException e) {
-			// Do nothing
+			LOGGER.error("PcscProvider.tranceive: Exception during send: " + e.getMessage());
 		}
 
 		if (LOGGER.isDebugEnabled()) {
@@ -66,6 +66,7 @@ public class PcscProvider implements IProvider {
 					LOGGER.debug("resp: " + val.getDetail());
 				}
 			} catch (Exception e) {
+			LOGGER.error("PcscProvider.tranceive: Exception during receive: " + e.getMessage());
 			}
 		}
 

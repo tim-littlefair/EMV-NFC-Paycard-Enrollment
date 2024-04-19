@@ -46,12 +46,12 @@ public class Main {
 				
 				// Define config
 				Config config = EmvTemplate.Config()
-						.setContactLess(false) // Enable contact less reading
+						.setContactLess(true) // Enable contact less reading
 						.setReadAllAids(true) // Read all aids in card
-						.setReadTransactions(true) // Read all transactions
-						.setRemoveDefaultParsers(false) // Remove default parsers (GeldKarte and Emv)
-						.setReadAt(true)
-						.setReadCplc(true); 
+						.setReadTransactions(false) // Don't read all transactions
+						.setRemoveDefaultParsers(false) // Don't Remove default parsers (GeldKarte and Emv)
+						.setReadAt(false)
+						.setReadCplc(false); 
 				
 				// Create Parser
 				EmvTemplate parser = EmvTemplate.Builder() //
