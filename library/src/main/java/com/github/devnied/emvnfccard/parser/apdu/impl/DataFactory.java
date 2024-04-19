@@ -90,7 +90,6 @@ public final class DataFactory {
 			throw new IllegalArgumentException(
 					"Error! CLCP Date values consist always of exactly 2 bytes");
 		}
-		System.out.println(String.format("dateBytes: %02x%02x",dateBytes[0],dateBytes[1]));
 
 		// Check empty date
 		if (dateBytes[0] == 0 && dateBytes[1] == 0){
@@ -98,6 +97,7 @@ public final class DataFactory {
 		} else if (dateBytes[0] == 0xFF && dateBytes[1] == 0xFF){
 			return null;
 		}
+
 		// current time
 		Calendar now = Calendar.getInstance();
 
@@ -107,11 +107,8 @@ public final class DataFactory {
 		int days = 100 * (dateBytes[0] & 0xF) + 10 * (0xF & dateBytes[1] >>> 4) + (dateBytes[1] & 0xF);
 
 		if (days > 366) {
-			System.out.println("Weird day offset: " + days);
-			days=180;
-
-			// throw new IllegalArgumentException(
-			// 		"Invalid date (or are we parsing it wrong??)");
+			throw new IllegalArgumentException(
+					"Invalid date (or are we parsing it wrong??)");
 		}
 
 		Calendar calculatedDate = Calendar.getInstance();
