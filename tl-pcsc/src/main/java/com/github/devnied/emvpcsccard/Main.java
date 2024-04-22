@@ -46,23 +46,24 @@ public class Main {
 				
 				// Define config
 				Config config = EmvTemplate.Config()
-						.setContactLess(true) // Enable contact less reading
-						.setReadAllAids(true) // Read all aids in card
-						.setReadTransactions(false) // Don't read all transactions
-						// This application substitutes an alternate implementation of 
-						// the parser, see the comment on MyParser.extractCommonsCardData
-						// for why the local implementation is chosen over devnied's 
-						// EmvParser.
-						.setRemoveDefaultParsers(true)
+						.setContactLess(true)
+						.setReadAllAids(true)
+						.setReadTransactions(false)
 						.setReadAt(false)
 						// Reading CPLC is presently disabled for two reasons:
-						// 1) It is not interesting for the purposes of my application
+						// 1) It is not interesting for the purposes of this application
 						// 2) With some of the cards I have to hand, devnied's implementation 
 						//    in v3.0.2-SNAPSHOT of this throws an exception because the 
 						//    two byte pattern 0xFF 0xFF is not accepted as a placeholder 
 						//    for an undefined date.  I propose to raise a PR on devnied's
-						//    github project related to this 
-						.setReadCplc(false); 
+						//    github project to tolerate this value in the same way the value
+						//    0x00 0x00 is tolerated.
+						.setReadCplc(false)
+						// This application substitutes an alternate implementation of 
+						// the parser, see the comment on MyParser.extractCommonsCardData
+						// for why the local implementation is chosen over devnied's 
+						// EmvParser.
+						.setRemoveDefaultParsers(true);
 				
 				// Create Parser
 				EmvTemplate template = EmvTemplate.Builder() //
@@ -75,14 +76,11 @@ public class Main {
 				// Read card
 				EmvCard emvCard = template.readEmvCard();
 				
-				LOGGER.info(emvCard.toString());
-
 				// Disconnect the card
 				card.disconnect(false);
 			}
 		} else {
 			LOGGER.error("No pcsc terminal found");
 		}
-
 	}
 }
