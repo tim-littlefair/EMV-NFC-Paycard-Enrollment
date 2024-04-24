@@ -2,6 +2,7 @@ package com.github.devnied.emvpcsccard;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,18 +22,51 @@ public abstract class MyProviderBase implements IProvider {
         String interpretedResponseStatus = null;
         String interpretedResponseBody = null;
 
+        private void appendIndentedHexNode(
+            StringBuffer fragmentBuffer, String nodeKey, String hexValueString, 
+            int indentDepth, String indentString
+        ) {
+            for(int i=0; i<indentDepth;++i) {
+                fragmentBuffer.append(indentString);
+            }
+            fragmentBuffer.append(String.format("<%s>\n",nodeKey));
+
+            for(int i=0; i<indentDepth+1;++i) {
+                fragmentBuffer.append(indentString);
+            }
+            fragmentBuffer.append(hexValueString);
+            fragmentBuffer.append("\n");
+
+            for(int i=0; i<indentDepth;++i) {
+                fragmentBuffer.append(indentString);
+            }
+            fragmentBuffer.append(String.format("</%s>\n",nodeKey));
+
+        }
+
         String toXmlFragment(String fragmentName) {
+            final String _INDENT_STRING = "    ";
             StringBuffer xmlFragment = new StringBuffer();
+
             if(fragmentName==null) {
                 xmlFragment.append("    <command_and_response>\n");
             } else {
                 xmlFragment.append(String.format("    <command_and_response name=\"%s\">\n",fragmentName));
             }
+
             if(rawCommand!=null) {
+                appendIndentedHexNode(
+                    xmlFragment, "raw_command", 
+                    BytesUtils.bytesToString(rawCommand),2,_INDENT_STRING
+                );
+/* 
                 xmlFragment.append(String.format(
-                    "        <raw_command>%s</raw_command>\n",
+                    "        <raw_command>\n" + 
+                    "             %s\n" +
+                    "        </raw_command>\n", +
                     BytesUtils.bytesToString(rawCommand)
                 ));
+*/
             }
             if(interpretedCommand!=null) {
                 xmlFragment.append(String.format(
@@ -88,11 +122,19 @@ public abstract class MyProviderBase implements IProvider {
         switch(cla_ins) {
             case 0x00a4:
                 if(p1_p2 == 0x0400) {
-                    commandInterpretation.append("SELECT_BY_NAME");
+                    byte[] aidBytes = Arrays.copyOfRange(cr.rawCommand,5,5+cr.rawCommand[4]);
+                    commandInterpretation.append("SELECT_BY_AID ");
+                    commandInterpretation.append(BytesUtils.bytesToStringNoSpace(aidBytes));
                     cr.interpretedCommand = commandInterpretation.toString();
                 } else {
                     // Don't expect this
-                    cr.interpretedCommand = "SELECT_BY_????";
+                    byte[] trailingBytes = Arrays.copyOfRange(cr.rawCommand,4,cr.rawCommand.length-4);
+                    commandInterpretation.append("SELECT_BY_???? ");
+                    commandInterpretation.append(
+                        String.format("p1_p2=%04x trailing_bytes=%s", 
+                        p1_p2, BytesUtils.bytesToString(trailingBytes)
+                    ));
+                    cr.interpretedCommand = commandInterpretation.toString();
                 }
                 break;
             case 0x80A8:
@@ -101,6 +143,11 @@ public abstract class MyProviderBase implements IProvider {
                 break;
             case 0x80CA:
                 commandInterpretation.append("GET_DATA");
+                cr.interpretedCommand = commandInterpretation.toString();
+                break;
+
+            case 0x00B2:
+                commandInterpretation.append("READ_RECORD");
                 cr.interpretedCommand = commandInterpretation.toString();
                 break;
 
@@ -139,9 +186,10 @@ public abstract class MyProviderBase implements IProvider {
 		}
         interpretCommand(newCommandAndResponse);
         interpretResponse(newCommandAndResponse);
-		LOGGER.info("Command and response:\n " + newCommandAndResponse.toXmlFragment(null));
 
         m_commandsAndResponses.add(newCommandAndResponse);
+
+        LOGGER.info(newCommandAndResponse.toXmlFragment(null));
 
 		return ret;
 	}

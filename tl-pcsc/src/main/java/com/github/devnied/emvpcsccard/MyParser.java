@@ -69,7 +69,6 @@ class MyParser extends EmvParser {
 
             if(aflBytes != null) {
                 List<Afl> listAfl = extractAfl(aflBytes);
-                LOGGER.info(String.format("AFL list=" + BytesUtils.bytesToString(aflBytes)));
                 // for each AFL
                 for (Afl afl : listAfl) {
                     // check all records
