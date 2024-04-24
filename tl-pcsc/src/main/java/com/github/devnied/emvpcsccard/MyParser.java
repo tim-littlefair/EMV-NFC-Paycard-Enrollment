@@ -76,11 +76,6 @@ class MyParser extends EmvParser {
                         LOGGER.debug(String.format("Attempting to read AFL[%d.%d]",afl.getSfi(),index,afl));
                         byte[] info = template.get().getProvider()
                                 .transceive(new CommandApdu(CommandEnum.READ_RECORD, index, afl.getSfi() << 3 | 4, 0).toBytes());
-                        // Extract card data
-                        if (ResponseUtils.isSucceed(info)) {
-                            LOGGER.info(String.format("AFL[%d.%d] bytes=%s",afl.getSfi(),index,BytesUtils.bytesToString(info)));
-                            LOGGER.info("Tags:" + TlvUtil.prettyPrintAPDUResponse(info));
-                        }
                     }
                 }
             } else {
