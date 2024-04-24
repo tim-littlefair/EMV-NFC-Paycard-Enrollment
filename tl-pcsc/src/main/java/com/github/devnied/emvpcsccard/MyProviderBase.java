@@ -59,14 +59,6 @@ public abstract class MyProviderBase implements IProvider {
                     xmlFragment, "raw_command", 
                     BytesUtils.bytesToString(rawCommand),2,_INDENT_STRING
                 );
-/* 
-                xmlFragment.append(String.format(
-                    "        <raw_command>\n" + 
-                    "             %s\n" +
-                    "        </raw_command>\n", +
-                    BytesUtils.bytesToString(rawCommand)
-                ));
-*/
             }
             if(interpretedCommand!=null) {
                 xmlFragment.append(String.format(
@@ -127,7 +119,8 @@ public abstract class MyProviderBase implements IProvider {
                     commandInterpretation.append(BytesUtils.bytesToStringNoSpace(aidBytes));
                     cr.interpretedCommand = commandInterpretation.toString();
                 } else {
-                    // Don't expect this
+                    // Don't expect this but ISO 7816 does define other modes of select
+                    // selected via p1_p2 so log in case we ever see them used.
                     byte[] trailingBytes = Arrays.copyOfRange(cr.rawCommand,4,cr.rawCommand.length-4);
                     commandInterpretation.append("SELECT_BY_???? ");
                     commandInterpretation.append(

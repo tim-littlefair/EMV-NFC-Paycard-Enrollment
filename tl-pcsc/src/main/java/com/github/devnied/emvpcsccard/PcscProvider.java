@@ -45,36 +45,6 @@ public class PcscProvider extends MyProviderBase {
 		}
 	}
 
-	/*
-	@Override
-	public byte[] transceive(final byte[] pCommand) throws CommunicationException {
-		byte[] ret = null;
-		buffer.clear();
-		LOGGER.info("send: " + BytesUtils.bytesToString(pCommand));
-		try {
-			int nbByte = channel.transmit(ByteBuffer.wrap(pCommand), buffer);
-			ret = new byte[nbByte];
-			System.arraycopy(buffer.array(), 0, ret, 0, ret.length);
-		} catch (CardException e) {
-			LOGGER.error("PcscProvider.tranceive: Exception during send: " + e.getMessage());
-		}
-		LOGGER.info("resp: " + BytesUtils.bytesToString(ret));
-		try {
-			String apduPrettyOutput = TlvUtil.prettyPrintAPDUResponse(ret);
-			if(apduPrettyOutput != null && apduPrettyOutput.length()>0) {
-				LOGGER.info(apduPrettyOutput);
-			}
-			SwEnum val = SwEnum.getSW(ret);
-			if (val != null) {
-				LOGGER.info("statusWord: " + val.getDetail());
-			}
-		} catch (Exception e) {
-		LOGGER.error("PcscProvider.tranceive: Exception during receive: " + e.getMessage());
-		}
-
-		return ret;
-	}
-*/
 	@Override
 	public byte[] getAt() {
 		return channel.getCard().getATR().getBytes();
