@@ -2,11 +2,10 @@ package com.github.devnied.emvpcsccard;
 
 import java.util.List;
 
-import javax.smartcardio.TerminalFactory;
 import javax.smartcardio.Card;
 import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
-import javax.smartcardio.CardChannel;
+import javax.smartcardio.TerminalFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,7 @@ import com.github.devnied.emvnfccard.model.EmvCard;
 import com.github.devnied.emvnfccard.parser.EmvTemplate;
 import com.github.devnied.emvnfccard.parser.EmvTemplate.Config;
 
-//@SuppressWarnings("restriction")
+@SuppressWarnings("restriction")
 public class Main {
 
 	/**
@@ -31,9 +30,9 @@ public class Main {
 		if (terminals.isEmpty()) {
 			throw new CardException("No card terminals available");
 		}
-		// LOGGER.info("Terminals: " + terminals);
+		LOGGER.info("Terminals: " + terminals);
 
-		ApduObserver apduStore = new ApduObserver();
+		// ApduStore apduStore = new ApduStore();
 
 		if (terminals != null && !terminals.isEmpty()) {
 			// Use the first terminal
@@ -45,7 +44,7 @@ public class Main {
 				LOGGER.info("card: " + card);
 
 				// Create provider
-				PcscProvider provider = new PcscProvider(card, apduStore);
+				PcscProvider provider = new PcscProvider(/* apduStore, */ CardChannel.getBasicChannel());
 				
 				// Define config
 				Config config = EmvTemplate.Config()

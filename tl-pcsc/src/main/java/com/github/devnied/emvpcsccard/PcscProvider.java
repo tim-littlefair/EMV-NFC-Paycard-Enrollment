@@ -2,8 +2,12 @@ package com.github.devnied.emvpcsccard;
 
 import java.nio.ByteBuffer;
 
-import javax.smartcardio.CardChannel;
+import javax.smartcardio.TerminalFactory;
+import javax.smartcardio.Card;
 import javax.smartcardio.CardException;
+import javax.smartcardio.CardTerminal;
+import javax.smartcardio.CardChannel;
+// import static javax.smartcardio.CardChannel.getBasicChannel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +28,15 @@ public class PcscProvider extends MyProviderBase {
 	private final CardChannel channel;
 
 
-	/**
+	/**Source option 5 is no longer supported. Use 7 or later.
 	 * Constructor using field
 	 *
 	 * @param pChannel
 	 *            card channel
 	 */
-	public PcscProvider(final CardChannel pChannel) {
-		channel = pChannel;
+	public PcscProvider(Card card, ApduObserver apduStore) {
+		super(apduStore);
+		channel = card.getBasicChannel();
 	}
 
     protected byte[] implementationTransceive(final byte[] pCommand, ByteBuffer receiveBuffer) throws CommunicationException {
