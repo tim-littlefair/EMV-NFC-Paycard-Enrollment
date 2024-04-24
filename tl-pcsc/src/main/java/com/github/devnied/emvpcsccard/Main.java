@@ -16,7 +16,7 @@ import com.github.devnied.emvnfccard.model.EmvCard;
 import com.github.devnied.emvnfccard.parser.EmvTemplate;
 import com.github.devnied.emvnfccard.parser.EmvTemplate.Config;
 
-//@SuppressWarnings("restriction")
+@SuppressWarnings("restriction")
 public class Main {
 
 	/**
@@ -31,9 +31,8 @@ public class Main {
 		if (terminals.isEmpty()) {
 			throw new CardException("No card terminals available");
 		}
-		// LOGGER.info("Terminals: " + terminals);
 
-		ApduObserver apduStore = new ApduObserver();
+		ApduObserver apduObserver = new ApduObserver();
 
 		if (terminals != null && !terminals.isEmpty()) {
 			// Use the first terminal
@@ -45,7 +44,7 @@ public class Main {
 				LOGGER.info("card: " + card);
 
 				// Create provider
-				PcscProvider provider = new PcscProvider(card, apduStore);
+				PcscProvider provider = new PcscProvider(card, apduObserver);
 				
 				// Define config
 				Config config = EmvTemplate.Config()
@@ -58,7 +57,7 @@ public class Main {
 						// 2) With some of the cards I have to hand, devnied's implementation 
 						//    in v3.0.2-SNAPSHOT of this throws an exception because the 
 						//    two byte pattern 0xFF 0xFF is not accepted as a placeholder 
-						//    for an undefined date.  I propose to raise a PR on devnied's
+						//    for an undefined date.  I plan to raise a PR on devnied's
 						//    github project to tolerate this value in the same way the value
 						//    0x00 0x00 is tolerated.
 						.setReadCplc(false)
@@ -81,6 +80,7 @@ public class Main {
 				
 				// Disconnect the card
 				card.disconnect(false);
+				LOGGER.info(apduObserver.toXmlString());
 			}
 		} else {
 			LOGGER.error("No pcsc terminal found");

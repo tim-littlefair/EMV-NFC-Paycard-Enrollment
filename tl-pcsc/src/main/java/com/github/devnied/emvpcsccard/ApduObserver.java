@@ -165,9 +165,19 @@ public class ApduObserver {
         }
     }
 
-    void add(CommandAndResponse newCommandAndResponse) {
-        // System.out.println(newCommandAndResponse.toXmlFragment(null));
+    public void add(CommandAndResponse newCommandAndResponse) {
         m_commandsAndResponses.add(newCommandAndResponse);
+    }
+
+    public String toXmlString() {
+        StringBuffer xmlBuffer = new StringBuffer();
+        xmlBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+        xmlBuffer.append("<emv_medium>\n");
+        for(CommandAndResponse carItem: m_commandsAndResponses) {
+            xmlBuffer.append(carItem.toXmlFragment(null));
+        }
+        xmlBuffer.append("</emv_medium>\n");
+        return xmlBuffer.toString();
     }
 
 }
