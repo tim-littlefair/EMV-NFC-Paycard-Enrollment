@@ -137,9 +137,19 @@ public class ApduObserver {
 
     ArrayList<CommandAndResponse> m_commandsAndResponses = new ArrayList<CommandAndResponse>();
     TreeSet<EmvTagEntry> m_emvTagEntries = new TreeSet<EmvTagEntry>();
+
+    // The medium (card, phone, watch, ring ...) can contain multiple applications
+    // with different AIDs, and different EMV tags may be present or common EMV 
+    // tags may have different values according to which AID is processed.
+    // The following member attempts to track which AID is presently being considered
+    // so that tag value differences can be examined.
     String m_currentAid = null;
 
     public ApduObserver() { }
+
+    public void clearCurrentAid() {
+        m_currentAid = null;
+    }
 
     public void extractTags(CommandAndResponse carItem) {
         final int lengthOfExtraCommandBytes = Byte.toUnsignedInt(carItem.rawCommand[4]);
@@ -201,17 +211,20 @@ public class ApduObserver {
         StringBuffer commandInterpretation = new StringBuffer();
 
         switch(cla_ins) {
-            case 0x00a4:
+            case 0x00a4: {
                 int lengthOfExtraBytes = cr.rawCommand[4];
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
                 if(p1_p2 == 0x0400) {
                     if(Arrays.equals(extraBytes,"2PAY.SYS.DDF01".getBytes())) {
                         commandInterpretation.append("SELECT CONTACTLESS PPSE");
+                        clearCurrentAid(); // redundant, but included for clarity
                     } else if(Arrays.equals(extraBytes,"1PAY.SYS.DDF01".getBytes())) {
                         commandInterpretation.append("SELECT CONTACT PPE");
+                        clearCurrentAid(); // redundant, but included for clarity
                     } else {
                         commandInterpretation.append("SELECT APPLICATION BY AID ");
-                        commandInterpretation.append(BytesUtils.bytesToStringNoSpace(extraBytes));
+                        m_currentAid = BytesUtils.bytesToStringNoSpace(extraBytes);
+                        commandInterpretation.append(m_currentAid);
                     }
                     cr.interpretedCommand = commandInterpretation.toString();
                 } else {
@@ -224,20 +237,31 @@ public class ApduObserver {
                     ));
                     cr.interpretedCommand = commandInterpretation.toString();
                 }
-                break;
-            case 0x80A8:
-                commandInterpretation.append("GET_PROCESSING_OPTIONS");
-                cr.interpretedCommand = commandInterpretation.toString();
-                break;
-            case 0x80CA:
-                commandInterpretation.append("GET_DATA");
-                cr.interpretedCommand = commandInterpretation.toString();
-                break;
+            }
+            break;
 
-            case 0x00B2:
+            case 0x80A8: {
+                int lengthOfExtraBytes = cr.rawCommand[4];
+                byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
+                cr.stepName = "GET_PROCESSING_OPTIONS for " + m_currentAid;
+                commandInterpretation.append(cr.stepName + "\n");
+                commandInterpretation.append(prettyPrintCommandExtraData(extraBytes));
+                cr.interpretedCommand = commandInterpretation.toString();
+            }
+            break;
+
+            case 0x80CA: {
+                String tagHex = String.format("%X",p1_p2);
+                commandInterpretation.append("GET_DATA for tag " + tagHex);
+                cr.interpretedCommand = commandInterpretation.toString();
+            }
+            break;
+
+            case 0x00B2: {
                 commandInterpretation.append("READ_RECORD");
                 cr.interpretedCommand = commandInterpretation.toString();
-                break;
+            }
+            break;
 
             default:
                 cr.interpretedCommand = String.format("Unexpected CLA/INS %04x", cla_ins);
@@ -252,6 +276,25 @@ public class ApduObserver {
         }
     }
 
+    String prettyPrintCommandExtraData(byte[] commandExtraBytes) {
+        // The GPO command sends some EMV tags related to the terminal
+        // configuration, this function is provided to pretty-print 
+        // these.
+        // We hijack the behaviour of devied's prettyPrintAPDUResponse for
+        // this.  Responses are expected to end with a two-byte status 
+        // word, so we fake one up.
+        byte[] fakeResponseBuffer = new byte[commandExtraBytes.length + 2];
+        System.arraycopy(commandExtraBytes,0,fakeResponseBuffer,0,commandExtraBytes.length);
+        fakeResponseBuffer[commandExtraBytes.length] = (byte) 0x90;
+        fakeResponseBuffer[commandExtraBytes.length + 1] = (byte) 0x00;
+
+        String prettyApdu = TlvUtil.prettyPrintAPDUResponse(fakeResponseBuffer);
+        prettyApdu = prettyApdu.strip();
+        int lastCarriageReturnPosition = prettyApdu.lastIndexOf("\n");
+
+        return prettyApdu.substring(0,lastCarriageReturnPosition);
+    }
+
     void interpretResponse(CommandAndResponse cr) {
         if(cr.interpretedResponseStatus != null) {
             // If this is already filled in it describes an exception,
@@ -261,7 +304,15 @@ public class ApduObserver {
         SwEnum swval = SwEnum.getSW(cr.rawResponse);
         if (swval != null) {
             cr.interpretedResponseStatus = swval.toString();
-			cr.interpretedResponseBody = TlvUtil.prettyPrintAPDUResponse(cr.rawResponse);
+            String prettyApdu = TlvUtil.prettyPrintAPDUResponse(cr.rawResponse);
+
+            // remove the status word as we already have it.
+            prettyApdu = prettyApdu.strip();
+            int lastCarriageReturnPosition = prettyApdu.lastIndexOf("\n");
+            if(lastCarriageReturnPosition > 0) {
+                prettyApdu = prettyApdu.substring(0,lastCarriageReturnPosition);
+            }
+    		cr.interpretedResponseBody = prettyApdu;
         } else {
             cr.interpretedResponseStatus = "Status word not found";
             cr.interpretedResponseBody = "Not parsed";

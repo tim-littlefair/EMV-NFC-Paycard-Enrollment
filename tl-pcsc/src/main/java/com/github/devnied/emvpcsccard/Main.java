@@ -18,10 +18,6 @@ import com.github.devnied.emvnfccard.parser.EmvTemplate.Config;
 
 @SuppressWarnings("restriction")
 public class Main {
-
-	/**
-	 * Class logger
-	 */
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
 	public static void main(final String[] args) throws CardException, CommunicationException {
@@ -73,7 +69,7 @@ public class Main {
 						.setConfig(config) // Define config
 						//.setTerminal(terminal) (optional) you can define a custom terminal implementation to create APDU
 						.build();
-				template.addParsers(new MyParser(template));
+				template.addParsers(new MyParser(template, apduObserver));
 				
 				// Read card
 				EmvCard emvCard = template.readEmvCard();

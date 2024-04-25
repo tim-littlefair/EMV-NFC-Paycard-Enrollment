@@ -25,21 +25,19 @@ import com.github.devnied.emvnfccard.enums.CommandEnum;
 import fr.devnied.bitlib.BytesUtils;
 
 class MyParser extends EmvParser {
-
-	/**
-	 * Class Logger
-	 */
 	private static final Logger LOGGER = LoggerFactory.getLogger(MyParser.class);
+
+    private ApduObserver m_apduObserver = null;
 
     /**
      * Default constructor
      *
      * @param pTemplate parser template
+     * @param apduObserver
      */
-
-
-    public MyParser(EmvTemplate pTemplate) {
+    public MyParser(EmvTemplate pTemplate, ApduObserver apduObserver) {
         super(pTemplate);
+        m_apduObserver = apduObserver;
     }
 
 	/**
@@ -85,6 +83,7 @@ class MyParser extends EmvParser {
         } else {
             LOGGER.error("EmvParser.extractCommonsCardData failed - not reading AFL data");
         }
+        m_apduObserver.clearCurrentAid();
 
         return retval;
     }
