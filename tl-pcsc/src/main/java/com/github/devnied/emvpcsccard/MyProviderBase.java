@@ -38,8 +38,8 @@ public abstract class MyProviderBase implements IProvider {
         if(m_apduStore != null) {
             m_apduStore.interpretCommand(newCommandAndResponse);
             m_apduStore.interpretResponse(newCommandAndResponse);
-            m_apduStore.extractTags(newCommandAndResponse);
             m_apduStore.add(newCommandAndResponse);
+            m_apduStore.extractTags(newCommandAndResponse);
         }
 
 		return ret;

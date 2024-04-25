@@ -22,6 +22,7 @@ import fr.devnied.bitlib.BytesUtils;
 import net.sf.scuba.tlv.TLVInputStream;
 
 class CommandAndResponse {
+    int stepNumber = 0;
     String stepName = null;
     byte[] rawCommand = null;
     byte[] rawResponse = null;
@@ -53,7 +54,10 @@ class CommandAndResponse {
     String toXmlFragment(String indentString) {
         StringBuffer xmlFragment = new StringBuffer();
 
-        xmlFragment.append(String.format("    <command_and_response name=\"%s\">\n",stepName));
+        xmlFragment.append(String.format(
+            "%s<command_and_response step_number=\"%d\" step_name=\"%s\">\n",
+            indentString, stepNumber, stepName
+        ));
 
         if(rawCommand!=null) {
             appendIndentedHexNode(
@@ -63,31 +67,35 @@ class CommandAndResponse {
         }
         if(interpretedCommand!=null) {
             xmlFragment.append(String.format(
-                "        <interpreted_command>\n%s\n" +
-                "        </interpreted_command>\n",
-                interpretedCommand
+                "%s<interpreted_command>\n%s\n%s</interpreted_command>\n",
+                indentString + indentString,
+                interpretedCommand.strip(),
+                indentString + indentString
             ));
         }
         if(rawResponse!=null) {
             xmlFragment.append(String.format(
-                "        <raw_response>%s</raw_response>\n",
-                BytesUtils.bytesToString(rawResponse)
+                "%s<raw_response>\n%s\n%s</raw_response>\n",
+                indentString + indentString, 
+                BytesUtils.bytesToString(rawResponse),
+                indentString + indentString
             ));
         }            
         if(interpretedResponseStatus!=null) {
             xmlFragment.append(String.format(
-                "        <interpreted_response_status>%s</interpreted_response_status>\n",
-                interpretedResponseStatus
+                "%s<interpreted_response_status>%s</interpreted_response_status>\n",
+                indentString+indentString, interpretedResponseStatus
             ));
         }
-        if(interpretedCommand!=null) {
+        if(interpretedResponseBody!=null) {
             xmlFragment.append(String.format(
-                "        <interpreted_response_body>%s\n" +
-                "        </interpreted_response_body>\n",
-                interpretedResponseBody
+                "%s<interpreted_response_body>\n%s\n%s</interpreted_response_body>\n",
+                indentString + indentString, 
+                interpretedResponseBody.strip(), 
+                indentString + indentString
             ));
         }
-        xmlFragment.append("    </command_and_response>\n");
+        xmlFragment.append(indentString + "</command_and_response>\n");
 
         return xmlFragment.toString();
     }
@@ -95,15 +103,14 @@ class CommandAndResponse {
 
 class EmvTagEntry implements Comparable<EmvTagEntry> {
     String tagHex = null;
-    String aid = null;
     String setIn = null;
     String valueHex = null;
 
     String toXmlFragment(String indentString) {
         StringBuffer xmlFragment = new StringBuffer();
         xmlFragment.append(String.format(
-            "%s<emv_tag_entry tag=\"%s\" aid=\"%s\"set_in=\"%s\">\n",
-            indentString, tagHex, aid, setIn
+            "%s<emv_tag_entry tag=\"%s\" set_in=\"%s\">\n",
+            indentString, tagHex, setIn
         ));
         xmlFragment.append(indentString + indentString + valueHex + "\n");
         xmlFragment.append(indentString + "</emv_tag_entry>\n");
@@ -112,9 +119,6 @@ class EmvTagEntry implements Comparable<EmvTagEntry> {
 
     public int compareTo(EmvTagEntry other) {
         int compareResult = tagHex.compareTo(other.tagHex);
-        if(compareResult == 0) {
-            compareResult = aid.compareTo(other.aid);
-        }
         if(compareResult == 0) {
             compareResult = setIn.compareTo(other.setIn);
         }
@@ -133,7 +137,7 @@ public class ApduObserver {
 
     ArrayList<CommandAndResponse> m_commandsAndResponses = new ArrayList<CommandAndResponse>();
     TreeSet<EmvTagEntry> m_emvTagEntries = new TreeSet<EmvTagEntry>();
-    String m_currentAid = "not set";
+    String m_currentAid = null;
 
     public ApduObserver() { }
 
@@ -142,15 +146,21 @@ public class ApduObserver {
         final byte[] commandTlvBytes = Arrays.copyOfRange(
             carItem.rawCommand,5,5+lengthOfExtraCommandBytes
         );
-        extractTags(commandTlvBytes, "terminal command " + carItem.stepName);
+        extractTags(
+            commandTlvBytes, 
+            String.format("step %2d terminal command",carItem.stepNumber)
+        );
 
         final byte[] responseTlvBytes = Arrays.copyOfRange(
             carItem.rawResponse,0,carItem.rawResponse.length-2
         );
-        extractTags(responseTlvBytes, "media response to " + carItem.stepName);
+        extractTags(
+            responseTlvBytes, 
+            String.format("step %2d media response",carItem.stepNumber)
+        );
     }
 
-    void extractTags(byte[] tlvBytes, String setBy) {
+    void extractTags(byte[] tlvBytes, String setIn) {
 		TLVInputStream stream = new TLVInputStream(new ByteArrayInputStream(tlvBytes));
 
 		try {
@@ -161,14 +171,13 @@ public class ApduObserver {
 					LOGGER.warn("TLV format error");
 					break;
 				} else if(tlv.getTag().isConstructed()) {
-                    extractTags(tlv.getValueBytes(),setBy);
+                    extractTags(tlv.getValueBytes(),setIn);
                 } else {
                     EmvTagEntry newEmvTagEntry = new EmvTagEntry();
 
                     newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tlv.getTagBytes());
                     newEmvTagEntry.valueHex = BytesUtils.bytesToString(tlv.getValueBytes());
-                    newEmvTagEntry.aid = m_currentAid;
-                    newEmvTagEntry.setIn = setBy;
+                    newEmvTagEntry.setIn = setIn;
                     m_emvTagEntries.add(newEmvTagEntry);
                 }
             }
@@ -260,6 +269,7 @@ public class ApduObserver {
     }
 
     public void add(CommandAndResponse newCommandAndResponse) {
+        newCommandAndResponse.stepNumber = m_commandsAndResponses.size() + 1;
         m_commandsAndResponses.add(newCommandAndResponse);
     }
 
