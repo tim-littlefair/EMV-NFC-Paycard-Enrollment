@@ -83,7 +83,7 @@ class MyParser extends EmvParser {
         } else {
             LOGGER.error("EmvParser.extractCommonsCardData failed - not reading AFL data");
         }
-        m_apduObserver.clearCurrentAid();
+        m_apduObserver.closeAppSelectionContext();
 
         return retval;
     }
