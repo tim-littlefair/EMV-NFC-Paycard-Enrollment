@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
 		<artifactId>oss-parent</artifactId>
-		<version>7</version>
+		<version>8</version>
 	</parent>
 
 	<inceptionYear>2013</inceptionYear>
@@ -19,7 +19,6 @@
 	<issueManagement>
 		<url>https://github.com/devnied/EMV-NFC-Paycard-Enrollment/issues</url>
 	</issueManagement>
-
 	<url>https://github.com/devnied/EMV-NFC-Paycard-Enrollment</url>
 	<developers>
 		<developer>
@@ -134,8 +133,8 @@
 					<artifactId>maven-compiler-plugin</artifactId>
 					<version>3.8.1</version>
 					<configuration>
-						<source>1.7</source>
-						<target>1.7</target>
+						<source>1.8</source>
+						<target>1.8</target>
 						<encoding>UTF-8</encoding>
 					</configuration>
 				</plugin>
