@@ -132,7 +132,9 @@ class AppSelectionContext implements Comparable<AppSelectionContext> {
         if(appKernelId!=null) {
             sb.append("k" + appKernelId);
         }
-        sb.append("p" + priority);
+        if(priority.length()>0) {
+            sb.append("p" + priority);
+        }
         return sb.toString();
     }
 
@@ -207,10 +209,14 @@ class EmvTagEntry implements Comparable<EmvTagEntry> {
  */
 class AppAccountIdentifier implements Comparable<AppAccountIdentifier> {
     String applicationPAN = null;
+    String applicationExpiryMonth = null;
     // If the PSN is not explicitly set we implicitly set it to 
     // the empty string (as null would not be comparable)
     String applicationPSN = "";
-    String applicationExpiryMonth = null;
+
+    public String toString() {
+        return String.format("%s.%s.%s",applicationPAN, applicationExpiryMonth,applicationPSN);
+    }
 
     public int compareTo(AppAccountIdentifier other) {
         int compareResult = applicationPAN.compareTo(other.applicationPAN);
@@ -243,6 +249,9 @@ public class ApduObserver {
     }
 
     public void closeAppSelectionContext() {
+        if(m_currentAppSelectionContext == null) {
+            return;
+        }
         if(m_accountIdentifiers.containsKey(m_currentAppSelectionContext)) {
             LOGGER.warn(
                 "PPSE contains multiple records at priority " + 
@@ -362,6 +371,11 @@ public class ApduObserver {
 
         switch(cla_ins) {
             case 0x00a4: {
+
+                // A new app is being selected - if an existing selection context 
+                // exists, close it off.
+                closeAppSelectionContext();
+
                 int lengthOfExtraBytes = cr.rawCommand[4];
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
                 if(p1_p2 == 0x0400) {
@@ -371,8 +385,9 @@ public class ApduObserver {
                         commandInterpretation.append("SELECT CONTACT PPE");
                     } else {
                         commandInterpretation.append("SELECT APPLICATION BY AID ");
-                        String aid = BytesUtils.bytesToStringNoSpace(extraBytes);
-                        commandInterpretation.append(aid);
+                        openAppSelectionContext();
+                        m_currentAppSelectionContext.aid = BytesUtils.bytesToStringNoSpace(extraBytes);
+                        commandInterpretation.append(m_currentAppSelectionContext.aid);
                     }
                     cr.interpretedCommand = commandInterpretation.toString();
                 } else {
@@ -389,7 +404,6 @@ public class ApduObserver {
             break;
 
             case 0x80A8: {
-                openAppSelectionContext();                
                 int lengthOfExtraBytes = cr.rawCommand[4];
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
                 cr.stepName = "GET_PROCESSING_OPTIONS for " + m_currentAppSelectionContext.toString();
@@ -400,6 +414,11 @@ public class ApduObserver {
             break;
 
             case 0x80CA: {
+                // Tags accessed via GET DATA belong to the medium, not a specific
+                // application, so close off the app selection context if it is open.
+                // exists, close it off.
+                closeAppSelectionContext();
+
                 String tagHex = String.format("%X",p1_p2);
                 commandInterpretation.append("GET_DATA for tag " + tagHex);
                 cr.interpretedCommand = commandInterpretation.toString();
@@ -478,16 +497,23 @@ public class ApduObserver {
         StringBuffer xmlBuffer = new StringBuffer();
         xmlBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
         xmlBuffer.append("<emv_medium>\n");
+
         for(CommandAndResponse carItem: m_commandsAndResponses) {
             xmlBuffer.append(carItem.toXmlFragment(indentString));
         }
-        xmlBuffer.append("</emv_medium>\n");
 
-        xmlBuffer.append("<emv_tag_entry>\n");
         for(EmvTagEntry eteItem: m_emvTagEntries) {
             xmlBuffer.append(eteItem.toXmlFragment(indentString));
         }
-        xmlBuffer.append("</emv_tag_entry\n");
+
+        for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
+            xmlBuffer.append(String.format(
+                "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />",
+                indentString, asc, m_accountIdentifiers.get(asc)
+            ));
+        }
+
+        xmlBuffer.append("</emv_medium>\n");
 
         return xmlBuffer.toString();
     }
