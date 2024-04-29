@@ -306,11 +306,6 @@ public class ApduObserver {
                 m_currentAppSelectionContext.toString()
             ));
         } else {
-            LOGGER.info(String.format(
-                "App account identifier for selection context %s is %s",
-                m_currentAppSelectionContext,
-                m_currentAppAccountIdentifier
-            ));
             m_accountIdentifiers.put(
                 m_currentAppSelectionContext,
                 m_currentAppAccountIdentifier
@@ -537,14 +532,13 @@ public class ApduObserver {
         m_commandsAndResponses.add(newCommandAndResponse);
     }
 
-    public void pciMaskAccountData() {
+    public boolean pciMaskAccountData() {
         // The following map will contain pairs of Strings, where
         // the key is a sensitive value which requires masking, 
         // and the associated value is the masked value
         TreeMap<String,String> maskPairs = new TreeMap<>();
 
         for(AppAccountIdentifier appAccountId: m_accountIdentifiers.values()) {
-
             String panWithoutSpaces = appAccountId.applicationPAN;
             char[] maskingChars = new char[panWithoutSpaces.length()-10];
             Arrays.fill(maskingChars,'F');
@@ -555,29 +549,84 @@ public class ApduObserver {
                 panWithoutSpaces.substring(panWithoutSpaces.length()-4)
             );
             maskPairs.put(panWithoutSpaces, maskedPanWithoutSpaces);
-
-
-            ArrayList<CommandAndResponse> scrubbedCommandsAndResponses = new ArrayList<>();
-            for(CommandAndResponse carItem: m_commandsAndResponses) {
-                for(String sensitiveString: maskPairs.keySet()) {
-                    String maskedString = maskPairs.get(sensitiveString);
-
-                    carItem.rawResponse = BytesUtils.fromString(
-                        BytesUtils.bytesToStringNoSpace(
-                            carItem.rawResponse
-                        ).replaceAll(sensitiveString,maskedString)
-                    );
-
-                    String sensitiveStringWithSpaces = hexReinsertSpacesBetweenBytes(sensitiveString);
-                    String maskedStringWithSpaces = hexReinsertSpacesBetweenBytes(maskedString);
-                    carItem.interpretedResponseBody = 
-                        carItem.interpretedResponseBody.replaceAll(sensitiveStringWithSpaces,maskedStringWithSpaces);
-                }
-                scrubbedCommandsAndResponses.add(carItem);
-            }
-            m_commandsAndResponses = scrubbedCommandsAndResponses;
         }
+
+        ArrayList<CommandAndResponse> maskedCommandsAndResponses = new ArrayList<>();
+        for(CommandAndResponse carItem: m_commandsAndResponses) {
+            for(String sensitiveString: maskPairs.keySet()) {
+                String maskedString = maskPairs.get(sensitiveString);
+
+                carItem.rawResponse = BytesUtils.fromString(
+                    BytesUtils.bytesToStringNoSpace(
+                        carItem.rawResponse
+                    ).replaceAll(sensitiveString,maskedString)
+                );
+
+                String sensitiveStringWithSpaces = hexReinsertSpacesBetweenBytes(sensitiveString);
+                String maskedStringWithSpaces = hexReinsertSpacesBetweenBytes(maskedString);
+                carItem.interpretedResponseBody = 
+                    carItem.interpretedResponseBody.replaceAll(sensitiveStringWithSpaces,maskedStringWithSpaces);
+            }
+            maskedCommandsAndResponses.add(carItem);
+        }
+        m_commandsAndResponses = maskedCommandsAndResponses;
+
+        TreeSet<EmvTagEntry> maskedEmvTagEntries = new TreeSet<>();
+        for(EmvTagEntry ete: m_emvTagEntries) {
+            for(String sensitiveString: maskPairs.keySet()) {
+                String maskedString = maskPairs.get(sensitiveString);
+                String sensitiveStringWithSpaces = hexReinsertSpacesBetweenBytes(sensitiveString);
+                String maskedStringWithSpaces = hexReinsertSpacesBetweenBytes(maskedString);
+                ete.valueHex = 
+                    ete.valueHex.replaceAll(sensitiveStringWithSpaces,maskedStringWithSpaces);
+            }
+            maskedEmvTagEntries.add(ete);
+        }
+        m_emvTagEntries = maskedEmvTagEntries;
+
+        TreeMap<AppSelectionContext,AppAccountIdentifier> maskedAccountIdentifiers = new TreeMap<>();
+        for(AppSelectionContext ascItem: m_accountIdentifiers.keySet()) {
+            AppAccountIdentifier appAccountId = m_accountIdentifiers.get(ascItem);
+            for(String sensitiveString: maskPairs.keySet()) {
+                String maskedString = maskPairs.get(sensitiveString);
+                appAccountId.applicationPAN = 
+                    appAccountId.applicationPAN.replaceAll(sensitiveString,maskedString);
+            }
+            maskedAccountIdentifiers.put(ascItem, appAccountId);
+        }
+        m_accountIdentifiers = maskedAccountIdentifiers;
+
+        // Provisionally set the flag which indicates that masking has been
+        // done (this will be set back to false if the XML output check
+        // immediately below finds any sensitive data)
         m_pciMaskingDone = true;
+
+        // Finally, do an XML serialization and report if any of the string which are supposed
+        // to be masked are present
+        String[] xmlLines = toXmlString().split("\n");
+        for(int xmlLineNumber=0; xmlLineNumber<xmlLines.length; ++xmlLineNumber ) {
+            String xmlLine = xmlLines[xmlLineNumber];
+            for(String sensitiveString: maskPairs.keySet()) {
+                String sensitiveStringWithSpaces = hexReinsertSpacesBetweenBytes(sensitiveString);
+                if(
+                    xmlLine.contains(sensitiveString) || 
+                    xmlLine.contains(sensitiveStringWithSpaces) 
+                ) {
+                    String maskedString = maskPairs.get(sensitiveString);
+                    String maskedStringWithSpaces = hexReinsertSpacesBetweenBytes(maskedString);
+                    LOGGER.error(String.format(
+                        "Masking failed for XML line %d, if properly masked should be:\n%s",
+                        xmlLineNumber, 
+                        xmlLine
+                            .replaceAll(sensitiveString, maskedString)
+                            .replaceAll(sensitiveStringWithSpaces,maskedStringWithSpaces)
+                        
+                    ));
+                    m_pciMaskingDone = false;
+                }
+            }
+        }
+        return m_pciMaskingDone;
     }
 
     private String hexReinsertSpacesBetweenBytes(String hexWithoutSpaces) {

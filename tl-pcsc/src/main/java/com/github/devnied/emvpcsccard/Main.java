@@ -87,22 +87,26 @@ public class Main {
 				// transaction - before we can dump this in a PCI-compliant 
 				// environment we need to mask all occurrences of the PAN
 				// and the cardholder name.
-				apduObserver.pciMaskAccountData();
+				boolean pciMaskingOk = apduObserver.pciMaskAccountData();
 
-				// TODO?: Allow args to control XML output directory/filename
-				String outDirName = "_work/";
-				String outFileName = apduObserver.mediumStateId() + ".xml";
-				try {
-					Files.createDirectories(Paths.get(outDirName));
-					File outFile = new File(outDirName+outFileName);
-					FileWriter outFileWriter = new FileWriter(outFile.getAbsoluteFile()); 
-					outFileWriter.write(apduObserver.toXmlString());
-					outFileWriter.close();
-				} catch (IOException e) {
-					LOGGER.error("Problem writing file out");
-					e.printStackTrace();
+				if(pciMaskingOk == true) {
+					// TODO?: Allow args to control XML output directory/filename
+					String outDirName = "_work/";
+					String outFileName = apduObserver.mediumStateId() + ".xml";
+					try {
+						Files.createDirectories(Paths.get(outDirName));
+						File outFile = new File(outDirName+outFileName);
+						FileWriter outFileWriter = new FileWriter(outFile.getAbsoluteFile()); 
+						outFileWriter.write(apduObserver.toXmlString());
+						outFileWriter.close();
+					} catch (IOException e) {
+						LOGGER.error("Problem writing file out");
+						e.printStackTrace();
+					}
+					LOGGER.info("Tap has been dumped to " + outDirName+outFileName);
+				} else {
+					LOGGER.info("Tap has not been dumped because PCI masking failed");
 				}
-				LOGGER.info("Tap has been dumped to " + outDirName+outFileName);
 			}
 		} else {
 			LOGGER.error("No pcsc terminal found");
