@@ -77,7 +77,9 @@ class MyParser extends EmvParser {
                     }
                 }
             } else {
-                LOGGER.error("AFL not found in GPO: " + BytesUtils.bytesToString(pGpo));
+                // The AFL seems to be optional - 
+                // for some cards the GPO must return all tags required
+                LOGGER.debug("AFL not found in GPO: " + BytesUtils.bytesToString(pGpo));
             }
 
         } else {

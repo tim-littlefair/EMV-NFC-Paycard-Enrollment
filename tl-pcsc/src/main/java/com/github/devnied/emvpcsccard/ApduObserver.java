@@ -168,26 +168,36 @@ class AppSelectionContext implements Comparable<AppSelectionContext> {
  */
 class EmvTagEntry implements Comparable<EmvTagEntry> {
     String tagHex = null;
-    String setBy = null;
+    String source = null;
     String scope = null;
     String valueHex = null;
 
     String toXmlFragment(String indentString) {
         StringBuffer xmlFragment = new StringBuffer();
+
         xmlFragment.append(String.format(
-            "%s<emv_tag_entry tag=\"%s\" set_by=\"%s\" scope=\"%s\">\n",
-            indentString, tagHex, setBy, scope
+            "%s<emv_tag_entry tag=\"%s\"", indentString, tagHex
         ));
+        if(source!=null) {
+            xmlFragment.append(String.format(" source=\"%s\"", source));
+        }
+        if(scope!=null) {
+            xmlFragment.append(String.format(" scope=\"%s\"", scope));
+        }
+        xmlFragment.append(">\n");
+        
         xmlFragment.append(indentString + indentString + valueHex + "\n");
+        
         xmlFragment.append(indentString + "</emv_tag_entry>\n");
+        
         return xmlFragment.toString();
     }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[EMVTagEntry: tag=" + tagHex);
-        if(setBy != null) {
-            sb.append(" set_by=" + setBy);
+        if(source != null) {
+            sb.append(" source=" + source);
         }
         if(scope != null) {
             sb.append(" scope=" + scope);
@@ -337,7 +347,6 @@ public class ApduObserver {
             } else {
                 ete.scope = null;
             }
-            LOGGER.info(ete.toString());
             m_emvTagEntries.add(ete);
         }
     }
