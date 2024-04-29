@@ -162,21 +162,21 @@ class AppSelectionContext implements Comparable<AppSelectionContext> {
  * In practice, for most tags, we expect that they will have the
  * same value for all AIDs if defined, but it will be common for
  * some tags to be defined for some AIDs but not for others, but
- * the 'setIn' member of this class will enable traceability of 
+ * the 'scope' member of this class will enable traceability of 
  * tag values set during the command/response exchange to the AID 
  * which the value is associated with.
  */
 class EmvTagEntry implements Comparable<EmvTagEntry> {
     String tagHex = null;
     String setBy = null;
-    String setIn = null;
+    String scope = null;
     String valueHex = null;
 
     String toXmlFragment(String indentString) {
         StringBuffer xmlFragment = new StringBuffer();
         xmlFragment.append(String.format(
-            "%s<emv_tag_entry tag=\"%s\" set_by=\"%s\" set_in=\"%s\">\n",
-            indentString, tagHex, setBy, setIn
+            "%s<emv_tag_entry tag=\"%s\" set_by=\"%s\" scope=\"%s\">\n",
+            indentString, tagHex, setBy, scope
         ));
         xmlFragment.append(indentString + indentString + valueHex + "\n");
         xmlFragment.append(indentString + "</emv_tag_entry>\n");
@@ -189,8 +189,8 @@ class EmvTagEntry implements Comparable<EmvTagEntry> {
         if(setBy != null) {
             sb.append(" set_by=" + setBy);
         }
-        if(setIn != null) {
-            sb.append(" set_in=" + setIn);
+        if(scope != null) {
+            sb.append(" scope=" + scope);
         }
         sb.append(
             " value=" + 
@@ -203,19 +203,17 @@ class EmvTagEntry implements Comparable<EmvTagEntry> {
     public int compareTo(EmvTagEntry other) {
         int compareResult = tagHex.compareTo(other.tagHex);
         if(compareResult == 0) {
-            compareResult = setIn.compareTo(other.setIn);
+            if(scope!=null && other.scope!=null) {
+                compareResult = scope.compareTo(other.scope);
+            } else if(scope!=null) {
+                compareResult = +1;
+            } else if(other.scope!=null) {
+                compareResult= -1;
+            } else {
+                // both scopes are null
+                // compareResult is already set to 0 which is correct
+            }
         }
-        /* 
-        if(compareResult == 0) {
-            compareResult = setBy.compareTo(other.setBy);
-        }
-        if(compareResult == 0) {
-            // Not really a meaningful sorting key, but included
-            // to make sorting fully deterministic on the 
-            // value of the item.
-            compareResult = valueHex.compareTo(other.valueHex);
-        }
-        */
         return compareResult;
     }
 }
@@ -330,14 +328,14 @@ public class ApduObserver {
         ArrayList<EmvTagEntry> newTagList = new ArrayList<EmvTagEntry>();
         extractTagsRecursively(stream, newTagList);
         for(EmvTagEntry ete: newTagList) {
-            // We defer setting ete.setIn until here so that m_currentAid
+            // We defer setting ete.scope until here so that m_currentAid
             // reflects all attributes of the selected AID entry
             // (NB the same AID may be selected more than once at 
             // different priorities)
             if(m_currentAppSelectionContext != null) {
-                ete.setIn = m_currentAppSelectionContext.toString();
+                ete.scope = m_currentAppSelectionContext.toString();
             } else {
-                ete.setIn = "<none>";
+                ete.scope = null;
             }
             LOGGER.info(ete.toString());
             m_emvTagEntries.add(ete);
