@@ -537,47 +537,54 @@ public class ApduObserver {
         TreeMap<String,String> maskPairs = new TreeMap<>();
 
         for(AppAccountIdentifier appAccountId: m_accountIdentifiers.values()) {
+
             String panWithoutSpaces = appAccountId.applicationPAN;
             char[] maskingChars = new char[panWithoutSpaces.length()-10];
             Arrays.fill(maskingChars,'F');
+            String maskingString = new String(maskingChars);
             String maskedPanWithoutSpaces = String.format(
                 "%s%s%s",panWithoutSpaces.substring(0,6),
-                maskingChars,
+                maskingString,
                 panWithoutSpaces.substring(panWithoutSpaces.length()-4)
             );
-            
             maskPairs.put(panWithoutSpaces, maskedPanWithoutSpaces);
 
-            StringBuilder panWithSpacesSB = new StringBuilder();
-            StringBuilder maskedPanWithSpacesSB = new StringBuilder();
-            while(true) {
-                panWithSpacesSB.append(panWithoutSpaces.substring(0,2));
-                maskedPanWithSpacesSB.append(maskedPanWithoutSpaces.substring(0,2));
-                panWithoutSpaces = panWithoutSpaces.substring(2);
-                panWithoutSpaces = panWithoutSpaces.substring(2);
-                if(panWithoutSpaces.length()>0) {
-
-                } else {
-                    maskPairs.put(
-                        panWithSpacesSB.toString(), 
-                        maskedPanWithSpacesSB.toString()
-                    );
-                    break;
-                }
-            } 
 
             ArrayList<CommandAndResponse> scrubbedCommandsAndResponses = new ArrayList<>();
             for(CommandAndResponse carItem: m_commandsAndResponses) {
                 for(String sensitiveString: maskPairs.keySet()) {
                     String maskedString = maskPairs.get(sensitiveString);
+
+                    carItem.rawResponse = BytesUtils.fromString(
+                        BytesUtils.bytesToStringNoSpace(
+                            carItem.rawResponse
+                        ).replaceAll(sensitiveString,maskedString)
+                    );
+
+                    String sensitiveStringWithSpaces = hexReinsertSpacesBetweenBytes(sensitiveString);
+                    String maskedStringWithSpaces = hexReinsertSpacesBetweenBytes(maskedString);
                     carItem.interpretedResponseBody = 
-                        carItem.interpretedResponseBody.replaceAll(sensitiveString,maskedString);
+                        carItem.interpretedResponseBody.replaceAll(sensitiveStringWithSpaces,maskedStringWithSpaces);
                 }
                 scrubbedCommandsAndResponses.add(carItem);
             }
             m_commandsAndResponses = scrubbedCommandsAndResponses;
         }
         m_pciMaskingDone = true;
+    }
+
+    private String hexReinsertSpacesBetweenBytes(String hexWithoutSpaces) {
+        StringBuilder hexWithSpacesSB = new StringBuilder();
+        while(true) {
+            hexWithSpacesSB.append(hexWithoutSpaces.substring(0,2));
+            hexWithoutSpaces = hexWithoutSpaces.substring(2);
+            if(hexWithoutSpaces.length()>0) {
+                hexWithSpacesSB.append(" ");
+            } else {
+                break;
+            } 
+        }
+        return hexWithSpacesSB.toString();
     }
 
     public String toXmlString() {
