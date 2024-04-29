@@ -1,6 +1,12 @@
 package com.github.devnied.emvpcsccard;
 
 import java.util.List;
+import java.nio.file.Paths;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.smartcardio.TerminalFactory;
 import javax.smartcardio.Card;
@@ -76,7 +82,27 @@ public class Main {
 				
 				// Disconnect the card
 				card.disconnect(false);
-				LOGGER.info(apduObserver.toXmlString());
+
+				// At this point apduObserver contains raw data relating to the 
+				// transaction - before we can dump this in a PCI-compliant 
+				// environment we need to mask all occurrences of the PAN
+				// and the cardholder name.
+				apduObserver.pciMaskAccountData();
+
+				// TODO?: Allow args to control XML output directory/filename
+				String outDirName = "_work/";
+				String outFileName = apduObserver.mediumStateId() + ".xml";
+				try {
+					Files.createDirectories(Paths.get(outDirName));
+					File outFile = new File(outDirName+outFileName);
+					FileWriter outFileWriter = new FileWriter(outFile.getAbsoluteFile()); 
+					outFileWriter.write(apduObserver.toXmlString());
+					outFileWriter.close();
+				} catch (IOException e) {
+					LOGGER.error("Problem writing file out");
+					e.printStackTrace();
+				}
+				LOGGER.info("Tap has been dumped to " + outDirName+outFileName);
 			}
 		} else {
 			LOGGER.error("No pcsc terminal found");

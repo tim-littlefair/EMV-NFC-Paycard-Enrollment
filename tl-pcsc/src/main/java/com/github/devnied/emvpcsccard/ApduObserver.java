@@ -266,6 +266,10 @@ public class ApduObserver {
 
     AppSelectionContext m_currentAppSelectionContext = null;
     AppAccountIdentifier m_currentAppAccountIdentifier = null;
+    int m_mediumTransactionCounterNow = -1;
+    int mediumTransactionCounterLastOnline = -1;
+
+    boolean m_pciMaskingDone = false;
 
     public ApduObserver() { }
 
@@ -395,8 +399,14 @@ public class ApduObserver {
             }
         } else if(tagHex.equals("5F34")) {
             m_currentAppAccountIdentifier.applicationPSN = tagValueHex;
-        } 
-    }
+        } else if(tagHex.equals("9F36")) {
+            byte[] atcBytes = BytesUtils.fromString(tagValueHex);
+            m_mediumTransactionCounterNow = (0xFF&atcBytes[0]*0x100) + (0xFF&atcBytes[1]); 
+        } else if(tagHex.equals("9F17")) {
+            byte[] lotcBytes = BytesUtils.fromString(tagValueHex);
+            mediumTransactionCounterLastOnline =  (0xFF&lotcBytes[0]*0x100) + (0xFF&lotcBytes[1]); 
+        }
+}
 
     void interpretCommand(CommandAndResponse cr) {
         int cla_ins = BytesUtils.byteArrayToInt(cr.rawCommand,0,2);
@@ -520,6 +530,56 @@ public class ApduObserver {
         m_commandsAndResponses.add(newCommandAndResponse);
     }
 
+    public void pciMaskAccountData() {
+        // The following map will contain pairs of Strings, where
+        // the key is a sensitive value which requires masking, 
+        // and the associated value is the masked value
+        TreeMap<String,String> maskPairs = new TreeMap<>();
+
+        for(AppAccountIdentifier appAccountId: m_accountIdentifiers.values()) {
+            String panWithoutSpaces = appAccountId.applicationPAN;
+            char[] maskingChars = new char[panWithoutSpaces.length()-10];
+            Arrays.fill(maskingChars,'F');
+            String maskedPanWithoutSpaces = String.format(
+                "%s%s%s",panWithoutSpaces.substring(0,6),
+                maskingChars,
+                panWithoutSpaces.substring(panWithoutSpaces.length()-4)
+            );
+            
+            maskPairs.put(panWithoutSpaces, maskedPanWithoutSpaces);
+
+            StringBuilder panWithSpacesSB = new StringBuilder();
+            StringBuilder maskedPanWithSpacesSB = new StringBuilder();
+            while(true) {
+                panWithSpacesSB.append(panWithoutSpaces.substring(0,2));
+                maskedPanWithSpacesSB.append(maskedPanWithoutSpaces.substring(0,2));
+                panWithoutSpaces = panWithoutSpaces.substring(2);
+                panWithoutSpaces = panWithoutSpaces.substring(2);
+                if(panWithoutSpaces.length()>0) {
+
+                } else {
+                    maskPairs.put(
+                        panWithSpacesSB.toString(), 
+                        maskedPanWithSpacesSB.toString()
+                    );
+                    break;
+                }
+            } 
+
+            ArrayList<CommandAndResponse> scrubbedCommandsAndResponses = new ArrayList<>();
+            for(CommandAndResponse carItem: m_commandsAndResponses) {
+                for(String sensitiveString: maskPairs.keySet()) {
+                    String maskedString = maskPairs.get(sensitiveString);
+                    carItem.interpretedResponseBody = 
+                        carItem.interpretedResponseBody.replaceAll(sensitiveString,maskedString);
+                }
+                scrubbedCommandsAndResponses.add(carItem);
+            }
+            m_commandsAndResponses = scrubbedCommandsAndResponses;
+        }
+        m_pciMaskingDone = true;
+    }
+
     public String toXmlString() {
         final String indentString = "    ";
         StringBuffer xmlBuffer = new StringBuffer();
@@ -527,19 +587,26 @@ public class ApduObserver {
         xmlBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
         xmlBuffer.append("<emv_medium>\n");
 
-        for(CommandAndResponse carItem: m_commandsAndResponses) {
-            xmlBuffer.append(carItem.toXmlFragment(indentString));
-        }            
+        if(m_pciMaskingDone != true) {
+            xmlBuffer.append(
+                indentString + 
+                "<!-- PCI masking not done yet - no data can be returned -->\n"
+            );
+        } else {
+            for(CommandAndResponse carItem: m_commandsAndResponses) {
+                xmlBuffer.append(carItem.toXmlFragment(indentString));
+            }            
 
-        for(EmvTagEntry eteItem: m_emvTagEntries) {
-            xmlBuffer.append(eteItem.toXmlFragment(indentString));
-        }
+            for(EmvTagEntry eteItem: m_emvTagEntries) {
+                xmlBuffer.append(eteItem.toXmlFragment(indentString));
+            }
 
-        for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
-            xmlBuffer.append(String.format(
-                "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />\n",
-                indentString, asc, m_accountIdentifiers.get(asc)
-            ));
+            for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
+                xmlBuffer.append(String.format(
+                    "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />\n",
+                    indentString, asc, m_accountIdentifiers.get(asc)
+                ));
+            }
         }
 
         xmlBuffer.append("</emv_medium>\n");
@@ -547,7 +614,15 @@ public class ApduObserver {
         return xmlBuffer.toString();
     }
 
-    void dummy() {
-        m_accountIdentifiers = null;
+    public String mediumStateId() {
+        String primaryAppIdentifier = "none_found";
+        for(AppAccountIdentifier appAccId: m_accountIdentifiers.values()) {
+            primaryAppIdentifier = appAccId.toString();
+            break;
+        }
+        return String.format(
+            "%s@atc=%04d",
+            primaryAppIdentifier,m_mediumTransactionCounterNow
+        );
     }
 }
