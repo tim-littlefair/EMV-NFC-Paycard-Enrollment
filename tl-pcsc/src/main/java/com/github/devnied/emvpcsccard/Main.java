@@ -91,6 +91,8 @@ public class Main {
 
 				if(pciMaskingOk == true) {
 					// TODO?: Allow args to control XML output directory/filename
+
+					LOGGER.info("\nSummary:\n\n" + apduObserver.summary() + "\n");
 					String outDirName = "_work/";
 					String outFileName = apduObserver.mediumStateId() + ".xml";
 					try {

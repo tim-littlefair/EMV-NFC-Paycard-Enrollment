@@ -643,6 +643,63 @@ public class ApduObserver {
         return hexWithSpacesSB.toString();
     }
 
+    public String summary() {
+        final String indentString = " ";
+        if(m_pciMaskingDone != true) {
+            return "Summary not available unless PCI masking completed successfully";
+        }
+        StringBuilder summarySB = new StringBuilder();
+        AppAccountIdentifier mediumAccountIdentifier = primaryAccountIdentifier();
+        AppAccountIdentifier[] otherAccountIdentifiers = nonPrimaryAccountIdentifiers();
+
+        String accountIdLabel = "Account identifier";
+        if(otherAccountIdentifiers != null) {
+            accountIdLabel = "Primary account identifier";
+        }
+
+        if(mediumAccountIdentifier.applicationPSN.length()==0) {
+            summarySB.append(String.format(
+                "%s: PAN=%s EXP=%s (no PSN)\n",
+                accountIdLabel,
+                mediumAccountIdentifier.applicationPAN, 
+                mediumAccountIdentifier.applicationExpiryMonth
+            ));
+        } else {
+            summarySB.append(String.format(
+                "Account identifier: PAN=%s EXP=%s PSN=%s\n",
+                mediumAccountIdentifier.applicationPAN, 
+                mediumAccountIdentifier.applicationExpiryMonth,
+                mediumAccountIdentifier.applicationPSN
+            ));
+        }
+
+        for(AppSelectionContext ascItem: m_accountIdentifiers.keySet()) {
+            AppAccountIdentifier aai = m_accountIdentifiers.get(ascItem);
+            if(!aai.toString().equals(mediumAccountIdentifier.toString())) {
+                // This application is associated with a non-primary 
+                // account id - it will be dumped later
+                continue;
+            }
+            summarySB.append(indentString + "  Application: AID=" + ascItem.aid);
+            if(ascItem.priority.length()>0) {
+                summarySB.append(" priority=" + ascItem.priority);
+            }
+            if(ascItem.appKernelId!=null) {
+                summarySB.append(" kernelID=" + ascItem.appKernelId);
+            }
+            if(ascItem.appVersionNumber!=null) {
+                summarySB.append(" kernelID=" + ascItem.appVersionNumber);
+            }
+            summarySB.append("\n");
+        } 
+        
+        if(otherAccountIdentifiers != null) {
+            summarySB.append("TODO: handle media with non-primary account id's\n");
+        }
+
+        return summarySB.toString();
+    }
+
     public String toXmlString() {
         final String indentString = "    ";
         StringBuffer xmlBuffer = new StringBuffer();
@@ -677,15 +734,50 @@ public class ApduObserver {
         return xmlBuffer.toString();
     }
 
-    public String mediumStateId() {
-        String primaryAppIdentifier = "none_found";
+    public AppAccountIdentifier primaryAccountIdentifier() {
+        AppAccountIdentifier retval = null;
         for(AppAccountIdentifier appAccId: m_accountIdentifiers.values()) {
-            primaryAppIdentifier = appAccId.toString();
+            // Only interested in first item returned
+            retval = appAccId;
             break;
         }
-        return String.format(
-            "%s@atc=%04d",
-            primaryAppIdentifier,m_mediumTransactionCounterNow
-        );
+        return retval;
+    }
+
+    /**
+     * The data model of the card permits applications to have different
+     * PAN, expiry, PSN values.
+     * At present we don't know whether this is common, rare or non-existent, 
+     * but this function allows us to handle this situation if it comes up.
+     * @return an array of account identifiers which differ from the primary
+     *         (or null if the array would be empty)
+     */
+    public AppAccountIdentifier[] nonPrimaryAccountIdentifiers() {
+        ArrayList<AppAccountIdentifier> retval = new ArrayList<>(m_accountIdentifiers.values());
+
+        // ArrayList.remove() will only remove one instance of the primary account identifier
+        // so we use removeAll() which removes all instances, but requires a collection as 
+        // a parameter.
+        ArrayList<AppAccountIdentifier> primaryAccIdList = new ArrayList<>();
+        primaryAccIdList.add(primaryAccountIdentifier());
+        retval.removeAll(primaryAccIdList);
+
+        if(retval.size()>0) {
+            return (AppAccountIdentifier[]) retval.toArray();
+        } else {
+            return null;
+        }
+    }
+
+    public String mediumStateId() {
+        AppAccountIdentifier mediumAccountIdentifier = primaryAccountIdentifier();
+        if(mediumAccountIdentifier!=null) {
+            return String.format(
+                "%s@atc=%04d",
+                mediumAccountIdentifier,m_mediumTransactionCounterNow
+            );
+        } else {
+            return null;
+        }
     }
 }
