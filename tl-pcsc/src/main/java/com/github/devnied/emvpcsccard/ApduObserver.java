@@ -118,10 +118,15 @@ class CommandAndResponse {
 // The following members attempt to track which PPSE AID entry is presently being considered
 // so that tag value differences between different selects.
 class AppSelectionContext implements Comparable<AppSelectionContext> {
-    String aid = null;              // mandatory
-    String priority = "";           // optional - will be treated as highest priority if absent
+    final String aid;               // mandatory on creation
+    String priority = "";           // optional - will be treated as highest priority if not found
     String appVersionNumber = null; // optional
     String appKernelId = null;      // optional
+    String pdol = null;             // optional - used to interpret terminal tags attached to GPO command
+
+    AppSelectionContext(String aid) {
+        this.aid = aid;
+    }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -170,12 +175,29 @@ class EmvTagEntry implements Comparable<EmvTagEntry> {
     String toXmlFragment(String indentString) {
         StringBuffer xmlFragment = new StringBuffer();
         xmlFragment.append(String.format(
-            "%s<emv_tag_entry tag=\"%s\" set_in=\"%s\">\n",
+            "%s<emv_tag_entry tag=\"%s\" set_by=\"%s\" set_in=\"%s\">\n",
             indentString, tagHex, setBy, setIn
         ));
         xmlFragment.append(indentString + indentString + valueHex + "\n");
         xmlFragment.append(indentString + "</emv_tag_entry>\n");
         return xmlFragment.toString();
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[EMVTagEntry: tag=" + tagHex);
+        if(setBy != null) {
+            sb.append(" set_by=" + setBy);
+        }
+        if(setIn != null) {
+            sb.append(" set_in=" + setIn);
+        }
+        sb.append(
+            " value=" + 
+            valueHex.replace(" ","") + 
+            "]"
+        );
+        return sb.toString();
     }
 
     public int compareTo(EmvTagEntry other) {
@@ -215,7 +237,11 @@ class AppAccountIdentifier implements Comparable<AppAccountIdentifier> {
     String applicationPSN = "";
 
     public String toString() {
-        return String.format("%s.%s.%s",applicationPAN, applicationExpiryMonth,applicationPSN);
+        if(applicationPSN.length()>0) {
+            return String.format("%s.%s.%s",applicationPAN, applicationExpiryMonth,applicationPSN);
+        } else {
+            return String.format("%s.%s",applicationPAN, applicationExpiryMonth);
+        }
     }
 
     public int compareTo(AppAccountIdentifier other) {
@@ -243,9 +269,15 @@ public class ApduObserver {
 
     public ApduObserver() { }
 
-    public void openAppSelectionContext() {
-        m_currentAppSelectionContext = new AppSelectionContext();
-        m_currentAppAccountIdentifier = new AppAccountIdentifier();
+    public void openAppSelectionContext(String aid) {
+        if(m_currentAppSelectionContext == null) {
+            m_currentAppSelectionContext = new AppSelectionContext(aid);
+            m_currentAppAccountIdentifier = new AppAccountIdentifier();
+        } else if(!m_currentAppSelectionContext.aid.equals(aid)) {
+            closeAppSelectionContext();
+            m_currentAppSelectionContext = new AppSelectionContext(aid);
+            m_currentAppAccountIdentifier = new AppAccountIdentifier();
+        }
     }
 
     public void closeAppSelectionContext() {
@@ -303,6 +335,7 @@ public class ApduObserver {
             } else {
                 ete.setIn = "<none>";
             }
+            LOGGER.info(ete.toString());
             m_emvTagEntries.add(ete);
         }
     }
@@ -322,6 +355,7 @@ public class ApduObserver {
                     EmvTagEntry newEmvTagEntry = new EmvTagEntry();
                     newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tlv.getTagBytes());
                     newEmvTagEntry.valueHex = BytesUtils.bytesToString(tlv.getValueBytes());
+                    reflectTagInSelectionContextAndAccountIdentifier(newEmvTagEntry.tagHex,newEmvTagEntry.valueHex);
                     newTagList.add(newEmvTagEntry);
                 }
             }
@@ -340,10 +374,9 @@ public class ApduObserver {
     }
 
     void reflectTagInSelectionContextAndAccountIdentifier(String tagHex, String tagValueHex) {
-        if( m_currentAppAccountIdentifier==null || m_currentAppSelectionContext==null ) {
-            return;
-        } else if(tagHex.equals("4F")) {
-            m_currentAppSelectionContext.aid = tagValueHex;
+        tagValueHex = tagValueHex.replaceAll(" ","");
+        if(tagHex.equals("4F")) {
+            openAppSelectionContext(tagValueHex.replaceAll(" ",""));
         } else if(tagHex.equals("87")) {
             m_currentAppSelectionContext.priority = tagValueHex;
         } else if(tagHex.equals("9F2A")) {
@@ -364,6 +397,7 @@ public class ApduObserver {
             m_currentAppAccountIdentifier.applicationPSN = tagValueHex;
         } 
     }
+
     void interpretCommand(CommandAndResponse cr) {
         int cla_ins = BytesUtils.byteArrayToInt(cr.rawCommand,0,2);
         int p1_p2 = BytesUtils.byteArrayToInt(cr.rawCommand,2,2);
@@ -371,11 +405,6 @@ public class ApduObserver {
 
         switch(cla_ins) {
             case 0x00a4: {
-
-                // A new app is being selected - if an existing selection context 
-                // exists, close it off.
-                closeAppSelectionContext();
-
                 int lengthOfExtraBytes = cr.rawCommand[4];
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
                 if(p1_p2 == 0x0400) {
@@ -385,9 +414,8 @@ public class ApduObserver {
                         commandInterpretation.append("SELECT CONTACT PPE");
                     } else {
                         commandInterpretation.append("SELECT APPLICATION BY AID ");
-                        openAppSelectionContext();
-                        m_currentAppSelectionContext.aid = BytesUtils.bytesToStringNoSpace(extraBytes);
-                        commandInterpretation.append(m_currentAppSelectionContext.aid);
+                        String aid = BytesUtils.bytesToStringNoSpace(extraBytes);
+                        commandInterpretation.append(aid);
                     }
                     cr.interpretedCommand = commandInterpretation.toString();
                 } else {
@@ -406,7 +434,7 @@ public class ApduObserver {
             case 0x80A8: {
                 int lengthOfExtraBytes = cr.rawCommand[4];
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
-                cr.stepName = "GET_PROCESSING_OPTIONS for " + m_currentAppSelectionContext.toString();
+                cr.stepName = "GET_PROCESSING_OPTIONS for most recent selected AID";
                 commandInterpretation.append(cr.stepName + "\n");
                 commandInterpretation.append(prettyPrintCommandExtraData(extraBytes));
                 cr.interpretedCommand = commandInterpretation.toString();
@@ -495,12 +523,13 @@ public class ApduObserver {
     public String toXmlString() {
         final String indentString = "    ";
         StringBuffer xmlBuffer = new StringBuffer();
+
         xmlBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
         xmlBuffer.append("<emv_medium>\n");
 
         for(CommandAndResponse carItem: m_commandsAndResponses) {
             xmlBuffer.append(carItem.toXmlFragment(indentString));
-        }
+        }            
 
         for(EmvTagEntry eteItem: m_emvTagEntries) {
             xmlBuffer.append(eteItem.toXmlFragment(indentString));
@@ -508,7 +537,7 @@ public class ApduObserver {
 
         for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
             xmlBuffer.append(String.format(
-                "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />",
+                "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />\n",
                 indentString, asc, m_accountIdentifiers.get(asc)
             ));
         }
@@ -518,4 +547,7 @@ public class ApduObserver {
         return xmlBuffer.toString();
     }
 
+    void dummy() {
+        m_accountIdentifiers = null;
+    }
 }
