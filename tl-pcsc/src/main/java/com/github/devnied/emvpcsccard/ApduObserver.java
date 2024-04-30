@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -18,6 +19,7 @@ import com.github.devnied.emvnfccard.utils.TlvUtil;
 import com.github.devnied.emvnfccard.exception.CommunicationException;
 import com.github.devnied.emvnfccard.exception.TlvException;
 import com.github.devnied.emvnfccard.iso7816emv.TLV;
+import com.github.devnied.emvnfccard.iso7816emv.TagAndLength;
 
 import fr.devnied.bitlib.BytesUtils;
 import net.sf.scuba.tlv.TLVInputStream;
@@ -124,7 +126,7 @@ class AppSelectionContext implements Comparable<AppSelectionContext> {
     String priority = "";           // optional - will be treated as highest priority if not found
     String appVersionNumber = null; // optional
     String appKernelId = null;      // optional
-    String pdol = null;             // optional - used to interpret terminal tags attached to GPO command
+    List<TagAndLength> pdol = null; // optional - used to interpret terminal tags attached to GPO command
 
     AppSelectionContext(String aid) {
         this.aid = aid;
@@ -322,7 +324,7 @@ public class ApduObserver {
         final byte[] commandTlvBytes = Arrays.copyOfRange(
             carItem.rawCommand,5,5+lengthOfExtraCommandBytes
         );
-        extractTags(commandTlvBytes, carItem);
+        // extractTags(commandTlvBytes, carItem);
 
         final byte[] responseTlvBytes = Arrays.copyOfRange(
             carItem.rawResponse,0,carItem.rawResponse.length-2
@@ -344,6 +346,7 @@ public class ApduObserver {
             } else {
                 ete.scope = null;
             }
+            ete.source = "medium";
             m_emvTagEntries.add(ete);
         }
     }
@@ -368,8 +371,8 @@ public class ApduObserver {
                     EmvTagEntry newEmvTagEntry = new EmvTagEntry();
                     newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tlv.getTagBytes());
                     newEmvTagEntry.valueHex = BytesUtils.bytesToString(tlv.getValueBytes());
-                    reflectTagInSelectionContextAndAccountIdentifier(newEmvTagEntry.tagHex,newEmvTagEntry.valueHex);
                     newTagList.add(newEmvTagEntry);
+                    reflectTagInSelectionContextAndAccountIdentifier(newEmvTagEntry.tagHex,newEmvTagEntry.valueHex);
                 }
             }
         } catch (IOException e) {
@@ -396,6 +399,9 @@ public class ApduObserver {
             m_currentAppSelectionContext.appKernelId = tagValueHex;
         } else if(tagHex.equals("????")) {
             m_currentAppSelectionContext.appVersionNumber = tagValueHex;
+        } else if(tagHex.equals("9F38")) {
+            m_currentAppSelectionContext.pdol = 
+                TlvUtil.parseTagAndLength(BytesUtils.fromString(tagValueHex));
         } else if(tagHex.equals("57")) {
             // track 2 equivalent data
             int separatorPos = tagValueHex.indexOf("D");
@@ -455,7 +461,35 @@ public class ApduObserver {
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
                 cr.stepName = "GET_PROCESSING_OPTIONS for " + m_currentAppSelectionContext.toString();
                 commandInterpretation.append(cr.stepName + "\n");
-                commandInterpretation.append(prettyPrintCommandExtraData(extraBytes));
+
+                if(m_currentAppSelectionContext.pdol != null) {
+                    int gpoDolOffset = 0;
+                    commandInterpretation.append("Tags requested in previously received PDOL:\n");
+                    for(TagAndLength tagAndLength: m_currentAppSelectionContext.pdol) {
+                        int nextTagLength = tagAndLength.getLength();
+                        if(gpoDolOffset + nextTagLength > lengthOfExtraBytes) {
+                            LOGGER.warn(String.format(
+                                "GPO PDOL item processing failed at offset %d expecting %d bytes for tag %X",
+                                gpoDolOffset, nextTagLength, tagAndLength.getTag()
+                            ));
+                            LOGGER.warn("GPO PDOL bytes: " + BytesUtils.bytesToString(extraBytes));
+                            break;
+                        }
+                        byte[] valueBytes = Arrays.copyOfRange(extraBytes, gpoDolOffset, gpoDolOffset + nextTagLength);
+                        EmvTagEntry newEmvTagEntry = new EmvTagEntry();
+                        newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tagAndLength.getTag().getTagBytes());
+                        newEmvTagEntry.valueHex = BytesUtils.bytesToString(valueBytes);
+                        newEmvTagEntry.scope = m_currentAppSelectionContext.toString();
+                        newEmvTagEntry.source = "terminal";
+                        m_emvTagEntries.add(newEmvTagEntry);
+                        commandInterpretation.append(String.format(
+                            "tag: %s length: %02x value: %s\n",
+                            newEmvTagEntry.tagHex, nextTagLength, newEmvTagEntry.valueHex
+                        ));
+                        
+                        gpoDolOffset += nextTagLength;
+                    }
+                }
                 cr.interpretedCommand = commandInterpretation.toString();
             }
             break;
