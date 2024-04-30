@@ -351,10 +351,15 @@ public class ApduObserver {
     void extractTagsRecursively(TLVInputStream stream, ArrayList<EmvTagEntry> newTagList) {
         try {
 			while (stream.available() > 0) {
+                stream.mark(1024);
 				TLV tlv = TlvUtil.getNextTLV(stream);
-
 				if (tlv == null) {
-					LOGGER.warn("TLV format error");
+                    stream.reset();
+                    byte[] dataAtTlvFail = new byte[stream.available()]; 
+                    stream.read(dataAtTlvFail);
+					LOGGER.warn(String.format(
+                        "TLV format error processing %s",BytesUtils.bytesToString(dataAtTlvFail)
+                    ));
 					break;
 				} else if(tlv.getTag().isConstructed()) {
                     TLVInputStream stream2 = new TLVInputStream(new ByteArrayInputStream(tlv.getValueBytes()));
