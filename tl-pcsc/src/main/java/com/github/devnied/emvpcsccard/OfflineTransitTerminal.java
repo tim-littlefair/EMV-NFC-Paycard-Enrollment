@@ -5,6 +5,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.devnied.emvnfccard.iso7816emv.EmvTags;
 import com.github.devnied.emvnfccard.iso7816emv.ITerminal;
@@ -17,7 +19,7 @@ import com.github.devnied.emvnfccard.model.enums.TransactionTypeEnum;
 import fr.devnied.bitlib.BytesUtils;
 
 public class OfflineTransitTerminal implements ITerminal {
-
+	private static final Logger LOGGER = LoggerFactory.getLogger(OfflineTransitTerminal.class);
 	/**
 	 * Random
 	 */
@@ -117,7 +119,9 @@ public class OfflineTransitTerminal implements ITerminal {
 		if (val != null) {
 			System.arraycopy(val, 0, ret, Math.max(ret.length - val.length, 0), Math.min(val.length, ret.length));
 		}            
-        System.out.println("X" + BytesUtils.bytesToString(ret) + "Y");
+        LOGGER.info(
+            pTagAndLength.toString() + ": " + BytesUtils.bytesToString(ret)
+        );
 		return ret;
 	}
 }
