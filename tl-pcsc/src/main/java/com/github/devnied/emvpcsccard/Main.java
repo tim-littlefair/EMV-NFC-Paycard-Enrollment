@@ -73,7 +73,7 @@ public class Main {
 				EmvTemplate template = EmvTemplate.Builder() //
 						.setProvider(provider) // Define provider
 						.setConfig(config) // Define config
-						//.setTerminal(terminal) (optional) you can define a custom terminal implementation to create APDU
+						.setTerminal(new OfflineTransitTerminal())
 						.build();
 				template.addParsers(new MyParser(template, apduObserver));
 				
