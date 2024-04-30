@@ -469,10 +469,10 @@ public class ApduObserver {
                         int nextTagLength = tagAndLength.getLength();
                         if(gpoDolOffset + nextTagLength > lengthOfExtraBytes) {
                             LOGGER.warn(String.format(
-                                "GPO PDOL item processing failed at offset %d expecting %d bytes for tag %X",
-                                gpoDolOffset, nextTagLength, tagAndLength.getTag()
+                                "GPO PDOL item processing failed at offset %d expecting %d bytes for tag %s",
+                                gpoDolOffset, nextTagLength, tagAndLength.getTag().toString()
                             ));
-                            LOGGER.warn("GPO PDOL bytes: " + BytesUtils.bytesToString(extraBytes));
+                            LOGGER.warn("GPO extra bytes: " + BytesUtils.bytesToString(extraBytes));
                             break;
                         }
                         byte[] valueBytes = Arrays.copyOfRange(extraBytes, gpoDolOffset, gpoDolOffset + nextTagLength);
