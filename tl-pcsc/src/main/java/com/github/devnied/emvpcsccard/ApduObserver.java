@@ -59,7 +59,7 @@ class CommandAndResponse {
         fragmentBuffer.append(String.format("</%s>\n",nodeKey));
     }
 
-    String toXmlFragment(String indentString) {
+    String toXmlFragment(String indentString, boolean captureOnly) {
         StringBuffer xmlFragment = new StringBuffer();
 
         xmlFragment.append(String.format(
@@ -73,7 +73,8 @@ class CommandAndResponse {
                 BytesUtils.bytesToString(rawCommand),2,indentString
             );
         }
-        if(interpretedCommand!=null) {
+
+        if(captureOnly==false && interpretedCommand!=null) {
             xmlFragment.append(String.format(
                 "%s<interpreted_command>\n%s\n%s</interpreted_command>\n",
                 indentString + indentString,
@@ -88,14 +89,15 @@ class CommandAndResponse {
                 BytesUtils.bytesToString(rawResponse),
                 indentString + indentString
             ));
-        }            
-        if(interpretedResponseStatus!=null) {
+        }  
+
+        if(captureOnly==false && interpretedResponseStatus!=null) {
             xmlFragment.append(String.format(
                 "%s<interpreted_response_status>%s</interpreted_response_status>\n",
                 indentString+indentString, interpretedResponseStatus
             ));
         }
-        if(interpretedResponseBody!=null) {
+        if(captureOnly==false && interpretedResponseBody!=null) {
             xmlFragment.append(String.format(
                 "%s<interpreted_response_body>\n%s\n%s</interpreted_response_body>\n",
                 indentString + indentString, 
@@ -603,7 +605,7 @@ public class ApduObserver {
 
         // Finally, do an XML serialization and report if any of the string which are supposed
         // to be masked are present
-        String[] xmlLines = toXmlString().split("\n");
+        String[] xmlLines = toXmlString(false).split("\n");
         for(int xmlLineNumber=0; xmlLineNumber<xmlLines.length; ++xmlLineNumber ) {
             String xmlLine = xmlLines[xmlLineNumber];
             for(String sensitiveString: maskPairs.keySet()) {
@@ -659,17 +661,19 @@ public class ApduObserver {
 
         if(mediumAccountIdentifier.applicationPSN.length()==0) {
             summarySB.append(String.format(
-                "%s: PAN=%s EXP=%s (no PSN)\n",
+                "%s:\n%sPAN=%s\n%sEXP=%s\n%s(no PSN)\n",
                 accountIdLabel,
-                mediumAccountIdentifier.applicationPAN, 
-                mediumAccountIdentifier.applicationExpiryMonth
+                indentString, mediumAccountIdentifier.applicationPAN, 
+                indentString, mediumAccountIdentifier.applicationExpiryMonth,
+                indentString
             ));
         } else {
             summarySB.append(String.format(
-                "Account identifier: PAN=%s EXP=%s PSN=%s\n",
-                mediumAccountIdentifier.applicationPAN, 
-                mediumAccountIdentifier.applicationExpiryMonth,
-                mediumAccountIdentifier.applicationPSN
+                "%s:\n%sPAN=%s\n%sEXP=%s\n%sPSN=%s\n",
+                accountIdLabel,
+                indentString,mediumAccountIdentifier.applicationPAN, 
+                indentString,mediumAccountIdentifier.applicationExpiryMonth,
+                indentString,mediumAccountIdentifier.applicationPSN
             ));
         }
 
@@ -680,17 +684,17 @@ public class ApduObserver {
                 // account id - it will be dumped later
                 continue;
             }
-            summarySB.append(indentString + "  Application: AID=" + ascItem.aid);
+            summarySB.append(indentString + "Application:\n");
+            summarySB.append(indentString + indentString + "AID=" + ascItem.aid + "\n");
             if(ascItem.priority.length()>0) {
-                summarySB.append(" priority=" + ascItem.priority);
+                summarySB.append(indentString + indentString + "priority=" + ascItem.priority + "\n");
             }
             if(ascItem.appKernelId!=null) {
-                summarySB.append(" kernelID=" + ascItem.appKernelId);
+                summarySB.append(indentString + indentString + "kernelID=" + ascItem.appKernelId + "\n");
             }
             if(ascItem.appVersionNumber!=null) {
-                summarySB.append(" kernelID=" + ascItem.appVersionNumber);
+                summarySB.append(indentString + indentString + "appVersionNumber=" + ascItem.appVersionNumber + "\n");
             }
-            summarySB.append("\n");
         } 
         
         if(otherAccountIdentifiers != null) {
@@ -700,7 +704,7 @@ public class ApduObserver {
         return summarySB.toString();
     }
 
-    public String toXmlString() {
+    public String toXmlString(boolean captureOnly) {
         final String indentString = "    ";
         StringBuffer xmlBuffer = new StringBuffer();
 
@@ -714,18 +718,20 @@ public class ApduObserver {
             );
         } else {
             for(CommandAndResponse carItem: m_commandsAndResponses) {
-                xmlBuffer.append(carItem.toXmlFragment(indentString));
-            }            
-
-            for(EmvTagEntry eteItem: m_emvTagEntries) {
-                xmlBuffer.append(eteItem.toXmlFragment(indentString));
+                xmlBuffer.append(carItem.toXmlFragment(indentString, captureOnly));
             }
 
-            for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
-                xmlBuffer.append(String.format(
-                    "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />\n",
-                    indentString, asc, m_accountIdentifiers.get(asc)
-                ));
+            if(captureOnly == false) {
+                for(EmvTagEntry eteItem: m_emvTagEntries) {
+                    xmlBuffer.append(eteItem.toXmlFragment(indentString));
+                }
+
+                for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
+                    xmlBuffer.append(String.format(
+                        "%s<app_account_id selection_context=\"%s\" account_id=\"%s\" />\n",
+                        indentString, asc, m_accountIdentifiers.get(asc)
+                    ));
+                }
             }
         }
 

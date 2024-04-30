@@ -93,25 +93,41 @@ public class Main {
 					// TODO?: Allow args to control XML output directory/filename
 
 					LOGGER.info("\nSummary:\n\n" + apduObserver.summary() + "\n");
+
 					String outDirName = "_work/";
-					String outFileName = apduObserver.mediumStateId() + ".xml";
+
 					try {
 						Files.createDirectories(Paths.get(outDirName));
-						File outFile = new File(outDirName+outFileName);
-						FileWriter outFileWriter = new FileWriter(outFile.getAbsoluteFile()); 
-						outFileWriter.write(apduObserver.toXmlString());
-						outFileWriter.close();
+
+						String outPathPrefix = outDirName + apduObserver.mediumStateId();
+
+						String fullXmlText = apduObserver.toXmlString(false);
+						writeReportToFile(outPathPrefix+"-full.xml", fullXmlText);
+
+						String captureOnlyXmlText = apduObserver.toXmlString(true);
+						writeReportToFile(outPathPrefix+"-capture.xml", captureOnlyXmlText);
+
+						LOGGER.info(
+							"Full and capture-only reports have been dumped to " + 
+							outPathPrefix + "-*.xml"
+						);
 					} catch (IOException e) {
-						LOGGER.error("Problem writing file out");
+						LOGGER.error("Problem writing reports out");
 						e.printStackTrace();
 					}
-					LOGGER.info("Tap has been dumped to " + outDirName+outFileName);
 				} else {
-					LOGGER.info("Tap has not been dumped because PCI masking failed");
+					LOGGER.info("No summary or tap dumps because PCI masking failed");
 				}
 			}
 		} else {
 			LOGGER.error("No pcsc terminal found");
 		}
+	}
+
+	private static void writeReportToFile(String outPath, String outXmlText) throws IOException {
+		File outFile = new File(outPath);
+		FileWriter outFileWriter = new FileWriter(outFile.getAbsoluteFile()); 
+		outFileWriter.write(outXmlText);
+		outFileWriter.close();
 	}
 }
