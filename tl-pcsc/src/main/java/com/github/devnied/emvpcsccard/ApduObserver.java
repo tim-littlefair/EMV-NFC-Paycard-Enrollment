@@ -448,7 +448,7 @@ public class ApduObserver {
             case 0x80A8: {
                 int lengthOfExtraBytes = cr.rawCommand[4];
                 byte[] extraBytes = Arrays.copyOfRange(cr.rawCommand,5,5+lengthOfExtraBytes);
-                cr.stepName = "GET_PROCESSING_OPTIONS for most recent selected AID";
+                cr.stepName = "GET_PROCESSING_OPTIONS for " + m_currentAppSelectionContext.toString();
                 commandInterpretation.append(cr.stepName + "\n");
                 commandInterpretation.append(prettyPrintCommandExtraData(extraBytes));
                 cr.interpretedCommand = commandInterpretation.toString();
