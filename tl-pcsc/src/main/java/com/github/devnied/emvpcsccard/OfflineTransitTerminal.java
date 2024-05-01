@@ -48,46 +48,63 @@ public class OfflineTransitTerminal implements ITerminal {
 	 *            tag and length value
 	 * @return tag value in byte
 	 */
-    @Override
+    @SuppressWarnings("unused")
+	@Override
 	public byte[] constructValue(final TagAndLength pTagAndLength) {
 		byte ret[] = new byte[pTagAndLength.getLength()];
 		byte val[] = null;
 		if (pTagAndLength.getTag() == EmvTags.TERMINAL_TRANSACTION_QUALIFIERS) {
-            val = new byte[pTagAndLength.getLength()];
+			if(false) {
+				val = new byte[pTagAndLength.getLength()];
 
-            // references:
-            // https://paymentcardtools.com/emv-tag-decoders/ttq
-            // EMV: 
-            // Visa: EMV Book C.3 v2.11 p113-114
-            // TODO: determine whether this needs to be different between Visa 
-            // and other brands
+				// references:
+				// https://paymentcardtools.com/emv-tag-decoders/ttq
+				// EMV: 
+				// Visa: EMV Book C.3 v2.11 p113-114
+				// TODO: determine whether this needs to be different between Visa 
+				// and other brands
 
-            setArrayBit(val,1, 8, false); // MSD not supported
-            // ret[0] bit 7 RFU = 0 
-            setArrayBit(val,1, 6, true);  // Visa: qVSDC supported
-            setArrayBit(val,1, 5, false); // Contact not supported
-            // Transit terminals are do all taps offline, but might pretend to 
-            // be online-capable so that the card generates an ARQC for 
-            // deferred authorisation at the payment gateway.
-            setArrayBit(val,1, 4, false); // not offline only
-            setArrayBit(val,1, 3, false); // Online PIN not supported
-            setArrayBit(val,1, 2, false); // Signature not supported
-            setArrayBit(val,1, 1, true);  // ODA for online supported
+				setArrayBit(val,1, 8, false); // MSD not supported
+				// ret[0] bit 7 RFU = 0 
+				setArrayBit(val,1, 6, true);  // Visa: qVSDC supported
+				setArrayBit(val,1, 5, false); // Contact not supported
+				// Transit terminals are do all taps offline, but might pretend to 
+				// be online-capable so that the card generates an ARQC for 
+				// deferred authorisation at the payment gateway.
+				setArrayBit(val,1, 4, false); // not offline only
+				setArrayBit(val,1, 3, false); // Online PIN not supported
+				setArrayBit(val,1, 2, false); // Signature not supported
+				setArrayBit(val,1, 1, true);  // ODA for online supported
 
-            setArrayBit(val,2, 8, true);  // Online cryptogram required
-            // setting CVM required by default to trigger CDCVM (i.e. mobile unlock)
-            setArrayBit(val,2, 7, true);  // CVM required
-            setArrayBit(val,2, 6, false); // Offline PIN not supported
-            // byte 2 bits 5-1 RFU = 0 for Visa
-            // TODO: Work out whether this is OK for other brands
+				setArrayBit(val,2, 8, true);  // Online cryptogram required
+				// setting CVM required by default to trigger CDCVM (i.e. mobile unlock)
+				setArrayBit(val,2, 7, true);  // CVM required
+				setArrayBit(val,2, 6, false); // Offline PIN not supported
+				// byte 2 bits 5-1 RFU = 0 for Visa
+				// TODO: Work out whether this is OK for other brands
 
-            setArrayBit(val,3, 8, false);  // Issuer updates not supported
-            // Turn on CDCVM so that we can see whether it is triggered
-            setArrayBit(val,3, 7, true);   // Consumer device CDM supported
-            // byte 3 bits 6-1 RFU = 0 for Visa
-            // TODO: Work out whether this is OK for other brands
+				setArrayBit(val,3, 8, false);  // Issuer updates not supported
+				// Turn on CDCVM so that we can see whether it is triggered
+				setArrayBit(val,3, 7, true);   // Consumer device CDM supported
+				// byte 3 bits 6-1 RFU = 0 for Visa
+				// TODO: Work out whether this is OK for other brands
 
-            // byte 4 all bits RFU = 0
+				// byte 4 all bits RFU = 0
+			} else {
+				TerminalTransactionQualifiers terminalQual = new TerminalTransactionQualifiers();
+				terminalQual.setContactlessVSDCsupported(true);
+				terminalQual.setContactEMVsupported(true);
+							
+				terminalQual.setMagneticStripeSupported(true);
+				terminalQual.setContactlessEMVmodeSupported(true);
+				terminalQual.setOnlinePINsupported(true);
+				terminalQual.setReaderIsOfflineOnly(false);
+				terminalQual.setSignatureSupported(true);
+				terminalQual.setContactChipOfflinePINsupported(true);
+				terminalQual.setIssuerUpdateProcessingSupported(true);
+				terminalQual.setConsumerDeviceCVMsupported(true);
+				val = terminalQual.getBytes();
+			}
 		} else if (pTagAndLength.getTag() == EmvTags.TERMINAL_COUNTRY_CODE) {
 			val = BytesUtils.fromString(StringUtils.leftPad(String.valueOf(countryCode.getNumeric()), pTagAndLength.getLength() * 2,
 					"0"));
