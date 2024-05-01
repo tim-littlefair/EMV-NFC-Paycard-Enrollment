@@ -493,6 +493,9 @@ public class ApduObserver {
                         
                         gpoDolOffset += nextTagLength;
                     }
+                    // Once the PDOL in the context has been consumed (even if 
+                    // deserialization failed), we don't need to dump it again 
+                    m_currentAppSelectionContext.pdol = null;
                 }
                 cr.interpretedCommand = commandInterpretation.toString();
             }
