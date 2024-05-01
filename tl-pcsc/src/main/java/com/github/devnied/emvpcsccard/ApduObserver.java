@@ -281,7 +281,7 @@ public class ApduObserver {
     AppSelectionContext m_currentAppSelectionContext = null;
     AppAccountIdentifier m_currentAppAccountIdentifier = null;
     int m_mediumTransactionCounterNow = -1;
-    int mediumTransactionCounterLastOnline = -1;
+    int m_mediumTransactionCounterLastOnline = -1;
 
     boolean m_pciMaskingDone = false;
 
@@ -425,7 +425,7 @@ public class ApduObserver {
             m_mediumTransactionCounterNow = (0xFF&atcBytes[0]*0x100) + (0xFF&atcBytes[1]); 
         } else if(tagHex.equals("9F17")) {
             byte[] lotcBytes = BytesUtils.fromString(tagValueHex);
-            mediumTransactionCounterLastOnline =  (0xFF&lotcBytes[0]*0x100) + (0xFF&lotcBytes[1]); 
+            m_mediumTransactionCounterLastOnline =  (0xFF&lotcBytes[0]*0x100) + (0xFF&lotcBytes[1]); 
         }
 }
 
@@ -752,6 +752,27 @@ public class ApduObserver {
         
         if(otherAccountIdentifiers != null) {
             summarySB.append("TODO: handle media with non-primary account id's\n");
+        }
+
+        if(m_mediumTransactionCounterNow != -1) {
+            summarySB.append("Counters:\n");
+            summarySB.append(
+                indentString + "Lifetime transactions: " + 
+                m_mediumTransactionCounterNow + "\n"
+            );
+            if(m_mediumTransactionCounterLastOnline != -1) {
+                summarySB.append(
+                    indentString + 
+                    "Offline transactions since last online: " + (
+                        m_mediumTransactionCounterNow - 
+                        m_mediumTransactionCounterLastOnline
+                    ) + "\n"
+                );
+            } else {
+                summarySB.append(
+                    indentString + "Last online transaction: never\n" 
+                );
+            }
         }
 
         return summarySB.toString();
