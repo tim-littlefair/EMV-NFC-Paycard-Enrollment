@@ -2,6 +2,7 @@ package com.github.devnied.emvpcsccard;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -123,7 +124,8 @@ class CommandAndResponse {
 // so that tag value differences between different selects.
 class AppSelectionContext implements Comparable<AppSelectionContext> {
     final String aid;               // mandatory on creation
-    String priority = "";           // optional - will be treated as highest priority if not found
+    String priority = "";           // optional - empty string will be treated as highest priority if not populated
+    String label = "??????";
     String appVersionNumber = null; // optional
     String appKernelId = null;      // optional
     List<TagAndLength> pdol = null; // optional - used to interpret terminal tags attached to GPO command
@@ -393,6 +395,10 @@ public class ApduObserver {
         tagValueHex = tagValueHex.replaceAll(" ","");
         if(tagHex.equals("4F")) {
             openAppSelectionContext(tagValueHex.replaceAll(" ",""));
+        } else if(tagHex.equals("50")) {
+            m_currentAppSelectionContext.label = new String(
+                BytesUtils.fromString(tagValueHex)
+            );
         } else if(tagHex.equals("87")) {
             m_currentAppSelectionContext.priority = tagValueHex;
         } else if(tagHex.equals("9F2A")) {
@@ -715,7 +721,7 @@ public class ApduObserver {
             ));
         } else {
             summarySB.append(String.format(
-                "%s:\n%sPAN=%s\n%sEXP=%s\n%sPSN=%s\n",
+                "%s:\n%sMPAN=%s\n%sEXP=%s\n%sPSN=%s\n",
                 accountIdLabel,
                 indentString,mediumAccountIdentifier.applicationPAN, 
                 indentString,mediumAccountIdentifier.applicationExpiryMonth,
@@ -723,6 +729,7 @@ public class ApduObserver {
             ));
         }
 
+        summarySB.append("Applications:\n");
         for(AppSelectionContext ascItem: m_accountIdentifiers.keySet()) {
             AppAccountIdentifier aai = m_accountIdentifiers.get(ascItem);
             if(!aai.toString().equals(mediumAccountIdentifier.toString())) {
@@ -730,7 +737,7 @@ public class ApduObserver {
                 // account id - it will be dumped later
                 continue;
             }
-            summarySB.append(indentString + "Application:\n");
+            summarySB.append(indentString + ascItem.label + ":\n");
             summarySB.append(indentString + indentString + "AID=" + ascItem.aid + "\n");
             if(ascItem.priority.length()>0) {
                 summarySB.append(indentString + indentString + "priority=" + ascItem.priority + "\n");
