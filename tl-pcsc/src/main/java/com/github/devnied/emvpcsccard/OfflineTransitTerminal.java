@@ -54,7 +54,7 @@ public class OfflineTransitTerminal implements ITerminal {
         byte ret[] = new byte[pTagAndLength.getLength()];
         byte val[] = null;
         if (pTagAndLength.getTag() == EmvTags.TERMINAL_TRANSACTION_QUALIFIERS) {
-            if(false) {
+            if(true) {
                 val = new byte[pTagAndLength.getLength()];
 
                 // references:
@@ -77,8 +77,7 @@ public class OfflineTransitTerminal implements ITerminal {
                 setArrayBit(val,1, 1, true);  // ODA for online supported
 
                 setArrayBit(val,2, 8, true);  // Online cryptogram required
-                // setting CVM required by default to trigger CDCVM (i.e. mobile unlock)
-                setArrayBit(val,2, 7, true);  // CVM required
+                setArrayBit(val,2, 7, false); // CVM not required by terminal
                 setArrayBit(val,2, 6, false); // Offline PIN not supported
                 // byte 2 bits 5-1 RFU = 0 for Visa
                 // TODO: Work out whether this is OK for other brands
@@ -86,7 +85,9 @@ public class OfflineTransitTerminal implements ITerminal {
                 setArrayBit(val,3, 8, false);  // Issuer updates not supported
                 // Turn on CDCVM so that we can see whether it is triggered
                 setArrayBit(val,3, 7, true);   // Consumer device CDM supported
+
                 // byte 3 bits 6-1 RFU = 0 for Visa
+
                 // TODO: Work out whether this is OK for other brands
 
                 // byte 4 all bits RFU = 0
