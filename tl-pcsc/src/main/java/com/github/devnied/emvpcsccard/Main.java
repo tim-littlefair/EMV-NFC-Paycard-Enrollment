@@ -28,6 +28,8 @@ public class Main {
 
 	public static void main(final String[] args) throws CardException, CommunicationException {
 
+		System.out.println("");
+
 		TerminalFactory factory = TerminalFactory.getDefault();
 		List<CardTerminal> terminals = factory.terminals().list();
 		if (terminals.isEmpty()) {
@@ -43,7 +45,6 @@ public class Main {
 			if (terminal.waitForCardPresent(0)) {
 				// Connect with the card
 				Card card = terminal.connect("*");
-				LOGGER.info("card: " + card);
 
 				// Create provider
 				PcscProvider provider = new PcscProvider(card, apduObserver);
@@ -92,7 +93,7 @@ public class Main {
 				if(pciMaskingOk == true) {
 					// TODO?: Allow args to control XML output directory/filename
 
-					LOGGER.info("\nSummary:\n\n" + apduObserver.summary() + "\n");
+					System.out.println("Summary:\n\n" + apduObserver.summary());
 
 					String outDirName = "_work/";
 
@@ -107,7 +108,7 @@ public class Main {
 						String captureOnlyXmlText = apduObserver.toXmlString(true);
 						writeReportToFile(outPathPrefix+"-capture.xml", captureOnlyXmlText);
 
-						LOGGER.info(
+						System.out.println(
 							"Full and capture-only reports have been dumped to " + 
 							outPathPrefix + "-*.xml"
 						);
@@ -122,6 +123,7 @@ public class Main {
 		} else {
 			LOGGER.error("No pcsc terminal found");
 		}
+		System.out.println("");
 	}
 
 	private static void writeReportToFile(String outPath, String outXmlText) throws IOException {

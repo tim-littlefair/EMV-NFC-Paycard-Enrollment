@@ -51,7 +51,6 @@ public class OfflineTransitTerminal implements ITerminal {
      *            tag and length value
      * @return tag value in byte
      */
-    @SuppressWarnings("unused")
     @Override
     public byte[] constructValue(final TagAndLength pTagAndLength) {
         byte ret[] = new byte[pTagAndLength.getLength()];
@@ -124,7 +123,7 @@ public class OfflineTransitTerminal implements ITerminal {
         if (val != null) {
             System.arraycopy(val, 0, ret, Math.max(ret.length - val.length, 0), Math.min(val.length, ret.length));
         }            
-        LOGGER.info(
+        LOGGER.debug(
             pTagAndLength.toString() + ": " + BytesUtils.bytesToString(ret)
         );
         return ret;
