@@ -17,8 +17,8 @@ import com.github.devnied.emvnfccard.model.enums.TransactionTypeEnum;
 
 import fr.devnied.bitlib.BytesUtils;
 
-public class OfflineTransitTerminal implements ITerminal {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OfflineTransitTerminal.class);
+public class TransitTerminal implements ITerminal {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TransitTerminal.class);
     /**
      * Random
      */
@@ -30,7 +30,7 @@ public class OfflineTransitTerminal implements ITerminal {
     private byte[] m_terminalCapabilities;
     private byte[] m_additionalTerminalCapabilities;
 
-    public OfflineTransitTerminal() {
+    public TransitTerminal() {
         m_countryCode = CountryCodeEnum.AU;
         m_currencyCode = CurrencyEnum.AUD;
         m_terminalCapabilities = new byte[] { (byte) 0x00, (byte) 0x08, (byte) 0xC8 };

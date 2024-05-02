@@ -74,7 +74,7 @@ public class Main {
 				EmvTemplate template = EmvTemplate.Builder() //
 						.setProvider(provider) // Define provider
 						.setConfig(config) // Define config
-						.setTerminal(new OfflineTransitTerminal())
+						.setTerminal(new TransitTerminal())
 						.build();
 				template.addParsers(new MyParser(template, apduObserver));
 				
