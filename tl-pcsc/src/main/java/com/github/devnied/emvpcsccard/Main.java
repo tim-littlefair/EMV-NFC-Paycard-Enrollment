@@ -109,9 +109,13 @@ public class Main {
 						writeReportToFile(outPathPrefix+"-capture.xml", captureOnlyXmlText);
 
 						System.out.println(
-							"Full and capture-only reports have been dumped to " + 
+							"Full and capture-only reports have been dumped to:\n" + 
 							outPathPrefix + "-*.xml"
 						);
+
+						TransitCapabilityChecker tcc = new TransitCapabilityChecker(apduObserver);
+						System.out.println("\n\nTransit capabilities:\n\n" + tcc.capabilityReport());
+
 					} catch (IOException e) {
 						LOGGER.error("Problem writing reports out");
 						e.printStackTrace();

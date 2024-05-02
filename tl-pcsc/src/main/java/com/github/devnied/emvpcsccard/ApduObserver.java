@@ -729,7 +729,7 @@ public class ApduObserver {
             ));
         }
 
-        summarySB.append("Applications:\n");
+        summarySB.append("Application Configurations:\n");
         for(AppSelectionContext ascItem: m_accountIdentifiers.keySet()) {
             AppAccountIdentifier aai = m_accountIdentifiers.get(ascItem);
             if(!aai.toString().equals(mediumAccountIdentifier.toString())) {
@@ -737,7 +737,8 @@ public class ApduObserver {
                 // account id - it will be dumped later
                 continue;
             }
-            summarySB.append(indentString + ascItem.label + ":\n");
+            summarySB.append(indentString + ascItem.toString() + ":\n");
+            summarySB.append(indentString + indentString + "Label=" + ascItem.label + ":\n");
             summarySB.append(indentString + indentString + "AID=" + ascItem.aid + "\n");
             if(ascItem.priority.length()>0) {
                 summarySB.append(indentString + indentString + "priority=" + ascItem.priority + "\n");
