@@ -337,7 +337,7 @@ public class ApduObserver {
     void extractTags(byte[] tlvBytes, CommandAndResponse carItem) {
 		TLVInputStream stream = new TLVInputStream(new ByteArrayInputStream(tlvBytes));
         ArrayList<EmvTagEntry> newTagList = new ArrayList<EmvTagEntry>();
-        extractTagsRecursively(stream, newTagList);
+        extractTagsRecursively(stream, newTagList,carItem);
         for(EmvTagEntry ete: newTagList) {
             // We defer setting ete.scope until here so that m_currentAid
             // reflects all attributes of the selected AID entry
@@ -353,7 +353,7 @@ public class ApduObserver {
         }
     }
 
-    void extractTagsRecursively(TLVInputStream stream, ArrayList<EmvTagEntry> newTagList) {
+    void extractTagsRecursively(TLVInputStream stream, ArrayList<EmvTagEntry> newTagList,CommandAndResponse carItem) {
         try {
 			while (stream.available() > 0) {
                 stream.mark(1024);
@@ -368,8 +368,11 @@ public class ApduObserver {
 					break;
 				} else if(tlv.getTag().isConstructed()) {
                     TLVInputStream stream2 = new TLVInputStream(new ByteArrayInputStream(tlv.getValueBytes()));
-                    extractTagsRecursively(stream2,newTagList);
+                    extractTagsRecursively(stream2,newTagList,carItem);
                 } else {
+                    LOGGER.info("before pMWTIS for TLV " + BytesUtils.bytesToString(tlv.getValueBytes()));
+                    pciMaskWholeTagIfSensitive(carItem, tlv);
+                    LOGGER.info("after pMWTIS " + BytesUtils.bytesToString(tlv.getValueBytes()));
                     EmvTagEntry newEmvTagEntry = new EmvTagEntry();
                     newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tlv.getTagBytes());
                     newEmvTagEntry.valueHex = BytesUtils.bytesToString(tlv.getValueBytes());
@@ -408,7 +411,7 @@ public class ApduObserver {
         } else if(tagHex.equals("9F38")) {
             m_currentAppSelectionContext.pdol = 
                 TlvUtil.parseTagAndLength(BytesUtils.fromString(tagValueHex));
-        } else if(tagHex.equals("57")) {
+        } else if(tagHex.equals("57") || tagHex.equals("9F6B")) {
             // track 2 equivalent data
             int separatorPos = tagValueHex.indexOf("D");
             if(separatorPos > 0) {
@@ -607,11 +610,15 @@ public class ApduObserver {
         switch(tagAsInt) {
             case 0x9F64: // ICC Public certificate - encrypted with known key, contains PAN
             case 0x56:   // Track 1 - contains PAN encoded as ASCII
-                // Continue and complete this function
+            // Others below this point may not contain sensitive data - but we mask them
+            // for safety's sake because they are not easy to inspect
+            case 0x9081: // Issuer public key certificate
+            case 0x9F4B: // Signed dynamic application data
+                // Continue and complete this function to mask these
                 break;
             
             default:
-                // not sensitive, return now
+                // not sensitive, no masking required, return now
                 return;
         }
 
@@ -619,7 +626,6 @@ public class ApduObserver {
         byte[] bytesAfterMasking = new byte[bytesToMask.length];
         Arrays.fill(bytesAfterMasking,(byte) 0xFF);
 
-        //
         carItem.rawResponse = BytesUtils.fromString(
             BytesUtils.bytesToString(carItem.rawResponse).replace(
                 BytesUtils.bytesToString(bytesToMask),
@@ -647,10 +653,13 @@ public class ApduObserver {
                     BytesUtils.bytesToString(chunkBytes) + " (",
                     BytesUtils.bytesToString(maskedChunkBytes) + " ("
                 );
+                break;
             }
 
-            bytesToMask = Arrays.copyOfRange(bytesToMask,16, 1024);
+            bytesToMask = Arrays.copyOfRange(bytesToMask, 16, bytesToMask.length);
         }
+
+        possiblySensitiveTLV.setValueBytes(bytesAfterMasking);
     }
 
     public boolean pciMaskAccountData() {
