@@ -425,7 +425,19 @@ public class ApduObserver {
             m_mediumTransactionCounterNow = (0xFF&atcBytes[0]*0x100) + (0xFF&atcBytes[1]); 
         } else if(tagHex.equals("9F17")) {
             byte[] lotcBytes = BytesUtils.fromString(tagValueHex);
-            m_mediumTransactionCounterLastOnline =  (0xFF&lotcBytes[0]*0x100) + (0xFF&lotcBytes[1]); 
+            switch(lotcBytes.length) {
+                case 2:
+                    m_mediumTransactionCounterLastOnline =  (0xFF&lotcBytes[0]*0x100) + (0xFF&lotcBytes[1]); 
+                    break;
+                case 1:
+                    m_mediumTransactionCounterLastOnline =  (int) lotcBytes[0]; 
+                    break;
+                default:
+                    LOGGER.warn(
+                        "Unexpected last online transaction counter: " + 
+                        BytesUtils.bytesToString(lotcBytes)
+                    );
+            }
         }
 }
 
@@ -584,6 +596,61 @@ public class ApduObserver {
     public void add(CommandAndResponse newCommandAndResponse) {
         newCommandAndResponse.stepNumber = m_commandsAndResponses.size() + 1;
         m_commandsAndResponses.add(newCommandAndResponse);
+    }
+
+    private void pciMaskWholeTagIfSensitive(CommandAndResponse carItem, TLV possiblySensitiveTLV) {
+        // There are a small number of tags which may contain sensitive data
+        // in an obfuscated state, or encrypted with publicly available keys.
+        // ref:
+        // https://medium.com/@androidcrypto/talk-to-your-credit-card-part-7-find-and-print-out-the-application-primary-account-number-52b24b396082
+        int tagAsInt = BytesUtils.byteArrayToInt(possiblySensitiveTLV.getTagBytes());
+        switch(tagAsInt) {
+            case 0x9F64: // ICC Public certificate - encrypted with known key, contains PAN
+            case 0x56:   // Track 1 - contains PAN encoded as ASCII
+                // Continue and complete this function
+                break;
+            
+            default:
+                // not sensitive, return now
+                return;
+        }
+
+        byte[] bytesToMask = possiblySensitiveTLV.getValueBytes();
+        byte[] bytesAfterMasking = new byte[bytesToMask.length];
+        Arrays.fill(bytesAfterMasking,(byte) 0xFF);
+
+        //
+        carItem.rawResponse = BytesUtils.fromString(
+            BytesUtils.bytesToString(carItem.rawResponse).replace(
+                BytesUtils.bytesToString(bytesToMask),
+                BytesUtils.bytesToString(bytesAfterMasking)
+            )
+        );
+
+        // carItem.intepretedResponse needs to be masked in 16 bytes per chunk
+        // as the prettyPrintAPDU function breaks the data into 16 bytes per line
+        while(bytesToMask.length>0) {
+            byte[] chunkBytes = Arrays.copyOfRange(bytesToMask,0,16);
+            byte[] maskedChunkBytes = new byte[chunkBytes.length];
+            Arrays.fill(maskedChunkBytes,(byte) 0xFF);
+            if(chunkBytes.length==16) {
+                carItem.interpretedResponseBody = carItem.interpretedResponseBody.replace(
+                    BytesUtils.bytesToString(chunkBytes),
+                    BytesUtils.bytesToString(maskedChunkBytes)
+                );
+            } else {
+                // The last line is usually shorter - we reduce but do not 
+                // eliminate the danger that we will replace the same hex
+                // sequence somewhere else by including the suffix " ("
+                // which begins the type indicator (usually " (BINARY)")
+                carItem.interpretedResponseBody = carItem.interpretedResponseBody.replace(
+                    BytesUtils.bytesToString(chunkBytes) + " (",
+                    BytesUtils.bytesToString(maskedChunkBytes) + " ("
+                );
+            }
+
+            bytesToMask = Arrays.copyOfRange(bytesToMask,16, 1024);
+        }
     }
 
     public boolean pciMaskAccountData() {

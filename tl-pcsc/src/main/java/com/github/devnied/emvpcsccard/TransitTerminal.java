@@ -134,29 +134,7 @@ public class TransitTerminal implements ITerminal {
             val = new byte[] { (byte) 0xC0, (byte) 0x80, 0 };
 */
         } else {
-            // value will be equal to the hex bytes of the tag, 
-            // left-padded with zeros or truncated to 
-            // the required length
-            int valueLength = pTagAndLength.getLength();
-            val = new byte[valueLength];
-            int tagLength = tag.getTagBytes().length;
-            if(tagLength>=valueLength) {
-                // truncated (if necessary)
-                val = Arrays.copyOfRange(tag.getTagBytes(),0,valueLength);
-            } else {
-                // left padded
-                System.arraycopy(
-                    tag.getTagBytes(),0,
-                    val, valueLength-tagLength,
-                    tagLength
-                );
-            }
-            LOGGER.warn(String.format(
-                "Unexpected tag %s(%s) requested from TransitTerminal, returning '%s'",
-                tag.getName(), 
-                BytesUtils.bytesToStringNoSpace(tag.getTagBytes()),
-                BytesUtils.bytesToString(val)
-            ));
+            val = generateValueForUnlistedTag(pTagAndLength, true);
         }
         if (val != null) {
             System.arraycopy(val, 0, ret, Math.max(ret.length - val.length, 0), Math.min(val.length, ret.length));
@@ -165,6 +143,52 @@ public class TransitTerminal implements ITerminal {
             pTagAndLength.toString() + ": " + BytesUtils.bytesToString(ret)
         );
         return ret;
+    }
+
+    /**
+     * The following function generates a value for a tag which is requested, where 
+     * This class does not explicitly define a value.
+     * The function is used in two conditions:
+     * 1) For tags which are not unexpected, but for the value to be used
+     * is not meaningful (e.g. unique serial numbers for devices, merchants)
+     * 2) For tags which are requested but were not expected by the implementation.
+     * For both types of tags, the value returned is derived from the tag identifier
+     * in the hope that this makes it easier to recognize tags which have not explicitly
+     * set without needing to check the code of the current class.
+     * @param pTagAndLength
+     * The code for the tag and expected (maximum) length.
+     * @param warn
+     * @return 
+     * the generated value
+     */
+    private byte[] generateValueForUnlistedTag(final TagAndLength pTagAndLength, boolean warn) {
+        ITag tag = pTagAndLength.getTag();
+
+        byte[] val;
+        // value will be equal to the hex bytes of the tag, 
+        // left-padded with zeros or truncated to 
+        // the required length
+        int valueLength = pTagAndLength.getLength();
+        val = new byte[valueLength];
+        int tagLength = tag.getTagBytes().length;
+        if(tagLength>=valueLength) {
+            // truncated preserving rightmost bytes (if necessary)
+            val = Arrays.copyOfRange(tag.getTagBytes(),valueLength-tagLength,valueLength);
+        } else {
+            // left padded
+            System.arraycopy(
+                tag.getTagBytes(),0,
+                val, valueLength-tagLength,
+                tagLength
+            );
+        }
+        LOGGER.warn(String.format(
+            "Unexpected tag %s(%s) requested from TransitTerminal, returning '%s'",
+            tag.getName(), 
+            BytesUtils.bytesToStringNoSpace(tag.getTagBytes()),
+            BytesUtils.bytesToString(val)
+        ));
+        return val;
     }
 
     private void populateDefaultTTQ(byte[] val) {
