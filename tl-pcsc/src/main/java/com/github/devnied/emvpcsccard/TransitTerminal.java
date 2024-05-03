@@ -36,6 +36,7 @@ public class TransitTerminal implements ITerminal {
     private byte[] m_amountOtherBCD;
     private byte[] m_unpredictableNumber;
     private byte[] m_terminalVerificationResults;
+    private byte[] m_merchantCategoryCode;
 
     public TransitTerminal() {
         m_countryCode = CountryCodeEnum.AU;
@@ -60,8 +61,10 @@ public class TransitTerminal implements ITerminal {
         m_unpredictableNumber = new byte[4];
         random.nextBytes(m_unpredictableNumber);
 
-        // Terminal verification results
         m_terminalVerificationResults = BytesUtils.fromString("000000000000");
+
+        // ref: https://github.com/greggles/mcc-codes/blob/main/mcc_codes.csv
+        m_merchantCategoryCode = BytesUtils.fromString("4111");
     }
 
     private void setArrayBit(byte[] array, int byteIndex, int bitIndex, boolean bitValue) {
@@ -118,6 +121,8 @@ public class TransitTerminal implements ITerminal {
             val = m_amountOtherBCD;
         } else if (pTagAndLength.getTag() == EmvTags.AMOUNT_OTHER_NUMERIC) {
             val = m_amountOtherBCD;
+        } else if (pTagAndLength.getTag() == EmvTags.TERMINAL_VERIFICATION_RESULTS) {
+            val = m_terminalVerificationResults;
         } else if (pTagAndLength.getTag() == EmvTags.TERMINAL_VERIFICATION_RESULTS) {
             val = m_terminalVerificationResults;
 /*
