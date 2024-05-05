@@ -303,15 +303,41 @@ public class ApduObserver {
             return;
         }
         if(m_accountIdentifiers.containsKey(m_currentAppSelectionContext)) {
-            LOGGER.warn(
-                "PPSE contains multiple records at priority " + 
+            LOGGER.warn(String.format(
+                "PPSE contains multiple records for AID %s at priority %s",
+                m_currentAppSelectionContext.aid,
                 m_currentAppSelectionContext.priority
-            );
+            ));
             LOGGER.warn(String.format(
                 "The PPSE record for selection context %s will not be captured", 
                 m_currentAppSelectionContext.toString()
             ));
         } else {
+            // Check whether a prior records exist in the collections with only 
+            // the AID set.
+            // If such entries do exist, they need to be removed/updated to 
+            // reflect the full current selection context.
+            AppSelectionContext priorIncompleteAsc = 
+                new AppSelectionContext(m_currentAppSelectionContext.aid);
+            if(m_accountIdentifiers.containsKey(priorIncompleteAsc)) {
+                m_accountIdentifiers.remove(priorIncompleteAsc);
+            } 
+
+            boolean entryFound;
+            do {
+                entryFound = false;
+                for(EmvTagEntry ete: m_emvTagEntries) {
+                    if(ete.scope.equals(priorIncompleteAsc.toString())) {
+                        m_emvTagEntries.remove(ete);
+                        ete.scope = m_currentAppSelectionContext.toString();
+                        m_emvTagEntries.add(ete);
+                        entryFound = true;
+                        break;
+                    }
+                }
+            }
+            while(entryFound==true);
+
             m_accountIdentifiers.put(
                 m_currentAppSelectionContext,
                 m_currentAppAccountIdentifier
@@ -324,7 +350,7 @@ public class ApduObserver {
     public void extractTags(CommandAndResponse carItem) {
         // Interpretation of PDOL tags attached to the GPO 
         // command is done in interpretCommand
-        
+
         final byte[] responseTlvBytes = Arrays.copyOfRange(
             carItem.rawResponse,0,carItem.rawResponse.length-2
         );
