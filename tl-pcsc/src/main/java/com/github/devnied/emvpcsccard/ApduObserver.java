@@ -313,10 +313,11 @@ public class ApduObserver {
                 m_currentAppSelectionContext.toString()
             ));
         } else {
-            // Check whether a prior records exist in the collections with only 
-            // the AID set.
-            // If such entries do exist, they need to be removed/updated to 
-            // reflect the full current selection context.
+            // Check whether any prior records exist in the collections with only 
+            // the same AID set.
+            // If such records do exist, they need to be removed/updated to 
+            // reflect the full current selection context (which should contain 
+            // an appPriorityIndicator at a minimum alongside the AID).
             AppSelectionContext priorIncompleteAsc = 
                 new AppSelectionContext(m_currentAppSelectionContext.aid);
             if(m_accountIdentifiers.containsKey(priorIncompleteAsc)) {
@@ -325,6 +326,9 @@ public class ApduObserver {
 
             boolean entryFound;
             do {
+                // As removal and reinsertion invalidates the iterator,
+                // we need to operate on one entry at a time until no 
+                // entries requiring attention are found.
                 entryFound = false;
                 for(EmvTagEntry ete: m_emvTagEntries) {
                     if(ete.scope.equals(priorIncompleteAsc.toString())) {
