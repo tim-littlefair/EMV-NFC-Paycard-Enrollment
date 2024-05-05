@@ -322,12 +322,9 @@ public class ApduObserver {
     }
 
     public void extractTags(CommandAndResponse carItem) {
-        final int lengthOfExtraCommandBytes = Byte.toUnsignedInt(carItem.rawCommand[4]);
-        final byte[] commandTlvBytes = Arrays.copyOfRange(
-            carItem.rawCommand,5,5+lengthOfExtraCommandBytes
-        );
-        // extractTags(commandTlvBytes, carItem);
-
+        // Interpretation of PDOL tags attached to the GPO 
+        // command is done in interpretCommand
+        
         final byte[] responseTlvBytes = Arrays.copyOfRange(
             carItem.rawResponse,0,carItem.rawResponse.length-2
         );
@@ -523,7 +520,8 @@ public class ApduObserver {
             case 0x80CA: {
                 // Tags accessed via GET DATA belong to the medium, not a specific
                 // application, so close off the app selection context if it is open.
-                // exists, close it off.
+                // exists, close it off.        // extractTags(commandTlvBytes, carItem);
+
                 closeAppSelectionContext();
 
                 String tagHex = String.format("%X",p1_p2);
