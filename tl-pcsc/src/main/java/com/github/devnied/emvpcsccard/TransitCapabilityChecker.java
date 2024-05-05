@@ -53,18 +53,9 @@ public class TransitCapabilityChecker {
         // CAPK = Certificate Authority Public Key
         String capkIndexKey = ascKey + "." + "8F";
         String capkIndexValue = m_emvTagEntryIndex.get(capkIndexKey);
-        // SDAD = Signed Dynamic Application Data
-        String sdadKey = ascKey + "." + "9F48";
-        String sdadValue = m_emvTagEntryIndex.get(sdadKey);
-
         if(capkIndexValue == null) {
             capabilityNotes.append(
-                "ODA not supported -\n CAPK index not found\n"
-            );
-            outcomeIndex = 2;
-        } else if (sdadValue == null) {
-            capabilityNotes.append(
-                "ODA not supported -\n signed dynamic application data not found\n"
+                "ODA not supported - CAPK index not found\n"
             );
             outcomeIndex = 2;
         } else {

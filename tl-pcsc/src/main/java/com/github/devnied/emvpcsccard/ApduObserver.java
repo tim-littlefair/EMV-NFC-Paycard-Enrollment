@@ -370,9 +370,7 @@ public class ApduObserver {
                     TLVInputStream stream2 = new TLVInputStream(new ByteArrayInputStream(tlv.getValueBytes()));
                     extractTagsRecursively(stream2,newTagList,carItem);
                 } else {
-                    LOGGER.info("before pMWTIS for TLV " + BytesUtils.bytesToString(tlv.getValueBytes()));
-                    pciMaskWholeTagIfSensitive(carItem, tlv);
-                    LOGGER.info("after pMWTIS " + BytesUtils.bytesToString(tlv.getValueBytes()));
+                    pciMaskWholeValueIfSensitive(carItem, tlv);
                     EmvTagEntry newEmvTagEntry = new EmvTagEntry();
                     newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tlv.getTagBytes());
                     newEmvTagEntry.valueHex = BytesUtils.bytesToString(tlv.getValueBytes());
@@ -406,7 +404,7 @@ public class ApduObserver {
             m_currentAppSelectionContext.priority = tagValueHex;
         } else if(tagHex.equals("9F2A")) {
             m_currentAppSelectionContext.appKernelId = tagValueHex;
-        } else if(tagHex.equals("????")) {
+        } else if(tagHex.equals("9F08")) {
             m_currentAppSelectionContext.appVersionNumber = tagValueHex;
         } else if(tagHex.equals("9F38")) {
             m_currentAppSelectionContext.pdol = 
@@ -601,20 +599,24 @@ public class ApduObserver {
         m_commandsAndResponses.add(newCommandAndResponse);
     }
 
-    private void pciMaskWholeTagIfSensitive(CommandAndResponse carItem, TLV possiblySensitiveTLV) {
+    private void pciMaskWholeValueIfSensitive(CommandAndResponse carItem, TLV possiblySensitiveTLV) {
         // There are a small number of tags which may contain sensitive data
         // in an obfuscated state, or encrypted with publicly available keys.
         // ref:
         // https://medium.com/@androidcrypto/talk-to-your-credit-card-part-7-find-and-print-out-the-application-primary-account-number-52b24b396082
         int tagAsInt = BytesUtils.byteArrayToInt(possiblySensitiveTLV.getTagBytes());
         switch(tagAsInt) {
-            case 0x9F64: // ICC Public certificate - encrypted with known key, contains PAN
+            case 0x9F46: // ICC Public certificate - encrypted with known key, contains PAN
             case 0x56:   // Track 1 - contains PAN encoded as ASCII
-            // Others below this point may not contain sensitive data - but we mask them
+            // Others below this point probably do not contain sensitive data - but we mask them
             // for safety's sake because they are not easy to inspect
             case 0x9081: // Issuer public key certificate
             case 0x9F4B: // Signed dynamic application data
-                // Continue and complete this function to mask these
+                // Continue and complete this function to mask values associated with the tags above
+                LOGGER.debug(String.format(
+                    "Masking whole value of tag %s(%X)",
+                    possiblySensitiveTLV.getTag().getName(), tagAsInt)
+                );
                 break;
             
             default:
