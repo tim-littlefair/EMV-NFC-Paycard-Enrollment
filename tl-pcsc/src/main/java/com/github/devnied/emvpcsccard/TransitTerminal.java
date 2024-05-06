@@ -50,7 +50,7 @@ public class TransitTerminal implements ITerminal {
 
 
         // TODO : write up default value
-        m_additionalTerminalCapabilities = BytesUtils.fromString("6200001000");
+        m_additionalTerminalCapabilities = BytesUtils.fromString("6200001001");
 
         // Terminal type is "Unattended, offline with online capability"
         m_terminalType = (byte) 0x25;
