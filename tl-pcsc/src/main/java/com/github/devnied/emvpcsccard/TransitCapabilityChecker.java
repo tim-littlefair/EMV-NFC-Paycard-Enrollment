@@ -3,6 +3,8 @@ package com.github.devnied.emvpcsccard;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import fr.devnied.bitlib.BytesUtils;
+
 public class TransitCapabilityChecker {
     TreeSet<String> m_appSelectionContexts;
     TreeMap<String,String> m_emvTagEntryIndex;
@@ -47,20 +49,50 @@ public class TransitCapabilityChecker {
         capabilityNotes.append(_OVERALL_CHECK_OUTCOMES[outcomeIndex] + "\n");
     }
 
+    private String getValueHex(String scope, String tagHexString) {
+        return m_emvTagEntryIndex.get(scope + "." + tagHexString);
+    }
+
+    private byte[] getValueBytes(String scope, String tagHexString) {
+        String valueHex = getValueHex(scope, tagHexString);
+        if(valueHex == null) {
+            return BytesUtils.fromString(valueHex);
+        }
+        return null;
+    }
+
+
     private int checkODACapability(
         String ascKey, int outcomeIndex, StringBuilder capabilityNotes
     ) {
+        // AIP = Application Interchange Profile
+        byte[] aipValueBytes = getValueBytes(ascKey,"82");
+
         // CAPK = Certificate Authority Public Key
-        String capkIndexKey = ascKey + "." + "8F";
-        String capkIndexValue = m_emvTagEntryIndex.get(capkIndexKey);
-        if(capkIndexValue == null) {
+        String capkIndexHex = getValueHex(ascKey, "8F");
+
+        if(aipValueBytes == null) {
+            capabilityNotes.append("AIP not found - unable to check if CDA supported");
+            outcomeIndex = Math.max(outcomeIndex,1);
+        } else if(aipValueBytes.length != 2) {
+            capabilityNotes.append("AIP has unexpected length => unable to check if CDA supported");
+            outcomeIndex = Math.max(outcomeIndex,1);
+        } else if( (aipValueBytes[0]&0x01) != 0x01 ) {
+            capabilityNotes.append("AIP byte 1 bit 1 not set => CDA not supported");
+            outcomeIndex = 2;
+        } else if( (aipValueBytes[1]&(byte)0x80) != 0x80) {
+            capabilityNotes.append("AIP byte 2 bit 8 not set => MSD only, EMV not supported");
+            outcomeIndex = 2;
+        }
+
+        if(outcomeIndex<2 && capkIndexHex == null) {
             capabilityNotes.append(
                 "ODA not supported - CAPK index not found\n"
             );
             outcomeIndex = 2;
         } else {
             capabilityNotes.append(
-                "ODA supported - using CAPK #" + capkIndexValue + "\n"
+                "ODA supported - using CAPK #" + capkIndexHex + "\n"
             );
         }
 
