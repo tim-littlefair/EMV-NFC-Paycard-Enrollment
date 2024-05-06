@@ -55,7 +55,7 @@ public class TransitCapabilityChecker {
 
     private byte[] getValueBytes(String scope, String tagHexString) {
         String valueHex = getValueHex(scope, tagHexString);
-        if(valueHex == null) {
+        if(valueHex != null) {
             return BytesUtils.fromString(valueHex);
         }
         return null;
@@ -65,6 +65,8 @@ public class TransitCapabilityChecker {
     private int checkODACapability(
         String ascKey, int outcomeIndex, StringBuilder capabilityNotes
     ) {
+        int odaOutcomeIndex = 0;
+
         // AIP = Application Interchange Profile
         byte[] aipValueBytes = getValueBytes(ascKey,"82");
 
@@ -72,31 +74,35 @@ public class TransitCapabilityChecker {
         String capkIndexHex = getValueHex(ascKey, "8F");
 
         if(aipValueBytes == null) {
-            capabilityNotes.append("AIP not found - unable to check if CDA supported");
-            outcomeIndex = Math.max(outcomeIndex,1);
+            capabilityNotes.append("AIP not found => unable to check if CDA supported\n");
+            odaOutcomeIndex = 1;
         } else if(aipValueBytes.length != 2) {
-            capabilityNotes.append("AIP has unexpected length => unable to check if CDA supported");
-            outcomeIndex = Math.max(outcomeIndex,1);
+            capabilityNotes.append("AIP has unexpected length => unable to check if CDA supported\n");
+            odaOutcomeIndex = 1;
         } else if( (aipValueBytes[0]&0x01) != 0x01 ) {
-            capabilityNotes.append("AIP byte 1 bit 1 not set => CDA not supported");
-            outcomeIndex = 2;
+            capabilityNotes.append("AIP byte 1 bit 1 not set => CDA not supported\n");
+            odaOutcomeIndex = 1;
         } else if( (aipValueBytes[1]&(byte)0x80) != 0x80) {
-            capabilityNotes.append("AIP byte 2 bit 8 not set => MSD only, EMV not supported");
-            outcomeIndex = 2;
+            capabilityNotes.append("AIP byte 2 bit 8 not set => MSD only, EMV not supported\n");
+            odaOutcomeIndex = 2;
         }
 
-        if(outcomeIndex<2 && capkIndexHex == null) {
+        if(odaOutcomeIndex==2) {
+            // We already know that ODA will not be supported so 
+            // there's no point in checking whether the CAPK index
+            // is found.
+        } else if (capkIndexHex == null) {
             capabilityNotes.append(
                 "ODA not supported - CAPK index not found\n"
             );
-            outcomeIndex = 2;
+            odaOutcomeIndex = 2;
         } else {
             capabilityNotes.append(
                 "ODA supported - using CAPK #" + capkIndexHex + "\n"
             );
         }
 
-        return outcomeIndex;
+        return Math.max(odaOutcomeIndex,outcomeIndex);
     }
 
     private int checkUsageRestrictions(String ascKey, int outcomeIndex, StringBuilder capabilityNotes) {
