@@ -36,7 +36,8 @@ public class Main {
 			throw new CardException("No card terminals available");
 		}
 
-		ApduObserver apduObserver = new ApduObserver();
+		PCIMaskingAgent thePCIMaskingAgent = new PCIMaskingAgent();
+		ApduObserver apduObserver = new ApduObserver(thePCIMaskingAgent);
 
 		if (terminals != null && !terminals.isEmpty()) {
 			// Use the first terminal
@@ -88,7 +89,7 @@ public class Main {
 				// transaction - before we can dump this in a PCI-compliant 
 				// environment we need to mask all occurrences of the PAN
 				// and the cardholder name.
-				boolean pciMaskingOk = apduObserver.pciMaskAccountData();
+				boolean pciMaskingOk = thePCIMaskingAgent.maskAccountData(apduObserver);
 
 				if(pciMaskingOk == true) {
 					// TODO?: Allow args to control XML output directory/filename
