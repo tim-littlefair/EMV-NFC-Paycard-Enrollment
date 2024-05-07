@@ -1,4 +1,4 @@
-package com.github.devnied.emvpcsccard;
+package net.heretical_camelid.transit_cemv_checker.library;
 
 /**
  * The medium is typically identified by a three part tuple 

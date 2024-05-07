@@ -2,7 +2,7 @@
 
 variant=tl-pcsc
 version=3.0.2-SNAPSHOT
-mainclass=com.github.devnied.emvpcsccard.Main
+mainclass=net.heretical_camelid.transit_cemv_checker.library.Main
 
 mvn clean dependency:copy-dependencies package -rf :$variant
 mvn_status=$?

@@ -1,4 +1,4 @@
-package com.github.devnied.emvpcsccard;
+package net.heretical_camelid.transit_cemv_checker.library;
 
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
