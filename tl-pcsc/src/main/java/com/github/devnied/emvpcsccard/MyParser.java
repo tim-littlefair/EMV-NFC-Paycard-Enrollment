@@ -59,13 +59,13 @@ class MyParser extends EmvParser {
         boolean retval =  super.extractCommonsCardData(pGpo);
         if(retval == true) {
             final byte[] aflBytes;
-            final byte[] rmt1Bytes = TlvUtil.getValue(pGpo, EmvTags.RESPONSE_MESSAGE_TEMPLATE_1);
-            if(rmt1Bytes != null) {
-                aflBytes = ArrayUtils.subarray(rmt1Bytes, 2, rmt1Bytes.length);
+            final byte[] rmt2Bytes = TlvUtil.getValue(pGpo, EmvTags.RESPONSE_MESSAGE_TEMPLATE_2);
+            if(rmt2Bytes != null) {
+                aflBytes = ArrayUtils.subarray(rmt2Bytes, 2, rmt2Bytes.length);
             } else {
-                aflBytes = TlvUtil.getValue(pGpo, EmvTags.APPLICATION_FILE_LOCATOR);
+                aflBytes = TlvUtil.getValue(pGpo, EmvTags.APPLICATION_FILE_LOCATOR);                
             }
-
+            
             if(aflBytes != null) {
                 List<Afl> listAfl = extractAfl(aflBytes);
                 // for each AFL
@@ -85,7 +85,7 @@ class MyParser extends EmvParser {
             } else {
                 // The AFL seems to be optional - 
                 // for some cards the GPO must return all tags required
-                LOGGER.debug("AFL not found in GPO: " + BytesUtils.bytesToString(pGpo));
+                LOGGER.warn("AFL not found in GPO response: " + BytesUtils.bytesToString(pGpo));
             }
 
         } else {
