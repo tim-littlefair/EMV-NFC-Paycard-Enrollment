@@ -43,9 +43,10 @@ class MyParser extends EmvParser {
 	/**
 	 * This method overrides devnied's implementation in the superclass
      * to re-discover the application file locator bytes, and to read 
-     * all of the files associated with the application (devnied's 
-     * implementation only reads files until the track data is found)
-	 *
+     * all of the records associated with the application (devnied's 
+     * implementation only reads records until the track data is found,
+     * and usually leaves the records containing CAPK index and other
+     * transit-relevant tags unread).
 	 * @param pGpo
 	 *            global processing options response
 	 * @return true if the extraction succeed
@@ -72,8 +73,13 @@ class MyParser extends EmvParser {
                     // check all records
                     for (int index = afl.getFirstRecord(); index <= afl.getLastRecord(); index++) {
                         LOGGER.debug(String.format("Attempting to read AFL[%d.%d]",afl.getSfi(),index,afl));
-                        byte[] info = template.get().getProvider()
-                                .transceive(new CommandApdu(CommandEnum.READ_RECORD, index, afl.getSfi() << 3 | 4, 0).toBytes());
+                        template.get().getProvider()
+                            .transceive(
+                                new CommandApdu(
+                                    CommandEnum.READ_RECORD, 
+                                    index, afl.getSfi() << 3 | 4, 0
+                                ).toBytes()
+                            );
                     }
                 }
             } else {

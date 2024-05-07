@@ -307,8 +307,6 @@ public class ApduObserver {
             case 0x80CA: {
                 // Tags accessed via GET DATA belong to the medium, not a specific
                 // application, so close off the app selection context if it is open.
-                // exists, close it off.        // extractTags(commandTlvBytes, carItem);
-
                 closeAppSelectionContext();
 
                 String tagHex = String.format("%X",p1_p2);
@@ -318,7 +316,11 @@ public class ApduObserver {
             break;
 
             case 0x00B2: {
-                commandInterpretation.append("READ_RECORD");
+                commandInterpretation.append(String.format(
+                    "READ_RECORD %02d.%02d", 
+                    (p1_p2 & 0x00FF) >> 3,
+                    (p1_p2 & 0xFF00) >> 8 
+                ));
                 cr.interpretedCommand = commandInterpretation.toString();
             }
             break;
