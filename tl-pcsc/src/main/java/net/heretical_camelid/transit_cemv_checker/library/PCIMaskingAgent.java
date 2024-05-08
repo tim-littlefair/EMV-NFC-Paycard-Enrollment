@@ -11,7 +11,7 @@ import fr.devnied.bitlib.BytesUtils;
 
 public class PCIMaskingAgent {
 
-    void maskWholeValueIfSensitive(ApduObserver apduObserver, CommandAndResponse carItem, TLV possiblySensitiveTLV) {
+    void maskWholeValueIfSensitive(APDUObserver apduObserver, CommandAndResponse carItem, TLV possiblySensitiveTLV) {
         // There are a small number of tags which may contain sensitive data
         // in an obfuscated state, or encrypted with publicly available keys.
         // ref:
@@ -25,7 +25,7 @@ public class PCIMaskingAgent {
             case 0x9081: // Issuer public key certificate
             case 0x9F4B: // Signed dynamic application data
                 // Continue and complete this function to mask values associated with the tags above
-                ApduObserver.LOGGER.debug(String.format(
+                APDUObserver.LOGGER.debug(String.format(
                     "Masking whole value of tag %s(%X)",
                     possiblySensitiveTLV.getTag().getName(), tagAsInt)
                 );
@@ -76,7 +76,7 @@ public class PCIMaskingAgent {
         possiblySensitiveTLV.setValueBytes(bytesAfterMasking);
     }
 
-    public boolean maskAccountData(ApduObserver apduObserver) {
+    public boolean maskAccountData(APDUObserver apduObserver) {
         // The following map will contain pairs of Strings, where
         // the key is a sensitive value which requires masking, 
         // and the associated value is the masked value
@@ -115,8 +115,8 @@ public class PCIMaskingAgent {
         }
         apduObserver.m_commandsAndResponses = maskedCommandsAndResponses;
     
-        TreeSet<EmvTagEntry> maskedEmvTagEntries = new TreeSet<>();
-        for(EmvTagEntry ete: apduObserver.m_emvTagEntries) {
+        TreeSet<EMVTagEntry> maskedEmvTagEntries = new TreeSet<>();
+        for(EMVTagEntry ete: apduObserver.m_emvTagEntries) {
             for(String sensitiveString: maskPairs.keySet()) {
                 String maskedString = maskPairs.get(sensitiveString);
                 String sensitiveStringWithSpaces = apduObserver.hexReinsertSpacesBetweenBytes(sensitiveString);
@@ -158,7 +158,7 @@ public class PCIMaskingAgent {
                 ) {
                     String maskedString = maskPairs.get(sensitiveString);
                     String maskedStringWithSpaces = apduObserver.hexReinsertSpacesBetweenBytes(maskedString);
-                    ApduObserver.LOGGER.error(String.format(
+                    APDUObserver.LOGGER.error(String.format(
                         "Masking failed for XML line %d, if properly masked should be:\n%s",
                         xmlLineNumber, 
                         xmlLine

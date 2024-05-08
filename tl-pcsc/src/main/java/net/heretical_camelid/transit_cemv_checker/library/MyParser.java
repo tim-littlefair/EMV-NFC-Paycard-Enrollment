@@ -27,7 +27,7 @@ import fr.devnied.bitlib.BytesUtils;
 class MyParser extends EmvParser {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MyParser.class);
 
-    private ApduObserver m_apduObserver = null;
+    private APDUObserver m_apduObserver = null;
 
     /**
      * Default constructor
@@ -35,7 +35,7 @@ class MyParser extends EmvParser {
      * @param pTemplate parser template
      * @param apduObserver
      */
-    public MyParser(EmvTemplate pTemplate, ApduObserver apduObserver) {
+    public MyParser(EmvTemplate pTemplate, APDUObserver apduObserver) {
         super(pTemplate);
         m_apduObserver = apduObserver;
     }

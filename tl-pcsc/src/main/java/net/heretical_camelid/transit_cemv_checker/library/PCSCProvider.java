@@ -20,7 +20,7 @@ import com.github.devnied.emvnfccard.utils.TlvUtil;
 
 import fr.devnied.bitlib.BytesUtils;
 
-public class PcscProvider extends MyProviderBase {
+public class PCSCProvider extends MyProviderBase {
 
 	/**
 	 * CardChanel
@@ -34,7 +34,7 @@ public class PcscProvider extends MyProviderBase {
 	 * @param pChannel
 	 *            card channel
 	 */
-	public PcscProvider(Card card, ApduObserver apduStore) {
+	public PCSCProvider(Card card, APDUObserver apduStore) {
 		super(apduStore);
 		channel = card.getBasicChannel();
 	}

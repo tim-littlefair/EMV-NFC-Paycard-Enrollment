@@ -15,8 +15,8 @@ import com.github.devnied.emvnfccard.exception.CommunicationException;
 import fr.devnied.bitlib.BytesUtils;
 
 public abstract class MyProviderBase implements IProvider {
-    final ApduObserver m_apduStore;
-    protected MyProviderBase(ApduObserver apduStore) {
+    final APDUObserver m_apduStore;
+    protected MyProviderBase(APDUObserver apduStore) {
         m_apduStore = apduStore;
     }
 

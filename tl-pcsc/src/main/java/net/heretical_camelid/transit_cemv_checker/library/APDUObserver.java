@@ -24,13 +24,13 @@ import com.github.devnied.emvnfccard.iso7816emv.TagAndLength;
 import fr.devnied.bitlib.BytesUtils;
 import net.sf.scuba.tlv.TLVInputStream;
 
-public class ApduObserver {
-	static final Logger LOGGER = LoggerFactory.getLogger(ApduObserver.class);
+public class APDUObserver {
+	static final Logger LOGGER = LoggerFactory.getLogger(APDUObserver.class);
 
     PCIMaskingAgent m_PCIMaskingAgent;
 
     ArrayList<CommandAndResponse> m_commandsAndResponses = new ArrayList<CommandAndResponse>();
-    TreeSet<EmvTagEntry> m_emvTagEntries = new TreeSet<EmvTagEntry>();
+    TreeSet<EMVTagEntry> m_emvTagEntries = new TreeSet<EMVTagEntry>();
     TreeMap<AppSelectionContext,AppAccountIdentifier> m_accountIdentifiers = new TreeMap<AppSelectionContext,AppAccountIdentifier>();
 
     AppSelectionContext m_currentAppSelectionContext = null;
@@ -40,7 +40,7 @@ public class ApduObserver {
 
     boolean m_pciMaskingDone = false;
 
-    public ApduObserver(PCIMaskingAgent pma) { 
+    public APDUObserver(PCIMaskingAgent pma) { 
         m_PCIMaskingAgent = pma;
     }
 
@@ -87,7 +87,7 @@ public class ApduObserver {
                 // we need to operate on one entry at a time until no 
                 // entries requiring attention are found.
                 entryFound = false;
-                for(EmvTagEntry ete: m_emvTagEntries) {
+                for(EMVTagEntry ete: m_emvTagEntries) {
                     if(ete.scope.equals(priorIncompleteAsc.toString())) {
                         m_emvTagEntries.remove(ete);
                         ete.scope = m_currentAppSelectionContext.toString();
@@ -120,9 +120,9 @@ public class ApduObserver {
 
     void extractTags(byte[] tlvBytes, CommandAndResponse carItem) {
 		TLVInputStream stream = new TLVInputStream(new ByteArrayInputStream(tlvBytes));
-        ArrayList<EmvTagEntry> newTagList = new ArrayList<EmvTagEntry>();
+        ArrayList<EMVTagEntry> newTagList = new ArrayList<EMVTagEntry>();
         extractTagsRecursively(stream, newTagList,carItem);
-        for(EmvTagEntry ete: newTagList) {
+        for(EMVTagEntry ete: newTagList) {
             // We defer setting ete.scope until here so that m_currentAid
             // reflects all attributes of the selected AID entry
             // (NB the same AID may be selected more than once at 
@@ -137,7 +137,7 @@ public class ApduObserver {
         }
     }
 
-    void extractTagsRecursively(TLVInputStream stream, ArrayList<EmvTagEntry> newTagList,CommandAndResponse carItem) {
+    void extractTagsRecursively(TLVInputStream stream, ArrayList<EMVTagEntry> newTagList,CommandAndResponse carItem) {
         try {
 			while (stream.available() > 0) {
                 stream.mark(1024);
@@ -155,7 +155,7 @@ public class ApduObserver {
                     extractTagsRecursively(stream2,newTagList,carItem);
                 } else {
                     m_PCIMaskingAgent.maskWholeValueIfSensitive(this, carItem, tlv);
-                    EmvTagEntry newEmvTagEntry = new EmvTagEntry();
+                    EMVTagEntry newEmvTagEntry = new EMVTagEntry();
                     newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tlv.getTagBytes());
                     newEmvTagEntry.valueHex = BytesUtils.bytesToString(tlv.getValueBytes());
                     newTagList.add(newEmvTagEntry);
@@ -283,7 +283,7 @@ public class ApduObserver {
                             break;
                         }
                         byte[] valueBytes = Arrays.copyOfRange(extraBytes, gpoDolOffset, gpoDolOffset + nextTagLength);
-                        EmvTagEntry newEmvTagEntry = new EmvTagEntry();
+                        EMVTagEntry newEmvTagEntry = new EMVTagEntry();
                         newEmvTagEntry.tagHex = BytesUtils.bytesToStringNoSpace(tagAndLength.getTag().getTagBytes());
                         newEmvTagEntry.valueHex = BytesUtils.bytesToString(valueBytes);
                         newEmvTagEntry.scope = m_currentAppSelectionContext.toString();
@@ -500,7 +500,7 @@ public class ApduObserver {
             }
 
             if(captureOnly == false) {
-                for(EmvTagEntry eteItem: m_emvTagEntries) {
+                for(EMVTagEntry eteItem: m_emvTagEntries) {
                     xmlBuffer.append(eteItem.toXmlFragment(indentString));
                 }
 

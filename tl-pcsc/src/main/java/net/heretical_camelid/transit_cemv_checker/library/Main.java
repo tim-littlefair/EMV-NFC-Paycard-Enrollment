@@ -37,7 +37,7 @@ public class Main {
 		}
 
 		PCIMaskingAgent thePCIMaskingAgent = new PCIMaskingAgent();
-		ApduObserver apduObserver = new ApduObserver(thePCIMaskingAgent);
+		APDUObserver apduObserver = new APDUObserver(thePCIMaskingAgent);
 
 		if (terminals != null && !terminals.isEmpty()) {
 			// Use the first terminal
@@ -48,7 +48,7 @@ public class Main {
 				Card card = terminal.connect("*");
 
 				// Create provider
-				PcscProvider provider = new PcscProvider(card, apduObserver);
+				PCSCProvider provider = new PCSCProvider(card, apduObserver);
 				
 				// Define config
 				Config config = EmvTemplate.Config()

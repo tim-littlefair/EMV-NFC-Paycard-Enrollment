@@ -15,7 +15,7 @@ package net.heretical_camelid.transit_cemv_checker.library;
  * tag values set during the command/response exchange to the AID 
  * which the value is associated with.
  */
-class EmvTagEntry implements Comparable<EmvTagEntry> {
+class EMVTagEntry implements Comparable<EMVTagEntry> {
     String tagHex = null;
     String source = null;
     String scope = null;
@@ -59,7 +59,7 @@ class EmvTagEntry implements Comparable<EmvTagEntry> {
         return sb.toString();
     }
 
-    public int compareTo(EmvTagEntry other) {
+    public int compareTo(EMVTagEntry other) {
         int compareResult = tagHex.compareTo(other.tagHex);
         if(compareResult == 0) {
             if(scope!=null && other.scope!=null) {

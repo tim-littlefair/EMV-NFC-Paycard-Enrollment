@@ -12,10 +12,10 @@ public class TransitCapabilityChecker {
     TreeSet<String> m_appSelectionContexts;
     TreeMap<String,String> m_emvTagEntryIndex;
 
-    public TransitCapabilityChecker(ApduObserver apduObserver) {
+    public TransitCapabilityChecker(APDUObserver apduObserver) {
         m_appSelectionContexts = new TreeSet<>();
         m_emvTagEntryIndex = new TreeMap<>();
-        for(EmvTagEntry ete: apduObserver.m_emvTagEntries) {
+        for(EMVTagEntry ete: apduObserver.m_emvTagEntries) {
             String eteScope = ete.scope;
             if(eteScope == null) {
                 // counters - maybe relevant for velocity checks
