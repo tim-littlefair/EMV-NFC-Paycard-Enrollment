@@ -88,7 +88,9 @@ public class APDUObserver {
                 // entries requiring attention are found.
                 entryFound = false;
                 for(EMVTagEntry ete: m_emvTagEntries) {
-                    if(ete.scope.equals(priorIncompleteAsc.toString())) {
+                    if(ete.scope == null) {
+                        continue;
+                    } else if(ete.scope.equals(priorIncompleteAsc.toString())) {
                         m_emvTagEntries.remove(ete);
                         ete.scope = m_currentAppSelectionContext.toString();
                         m_emvTagEntries.add(ete);
