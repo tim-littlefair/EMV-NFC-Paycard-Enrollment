@@ -1,7 +1,7 @@
 #!/bin/sh
 
 variant=tl-pcsc
-version=3.0.2-SNAPSHOT
+version=0.1.0
 mainclass=net.heretical_camelid.transit_cemv_checker.library.Main
 
 mvn clean dependency:copy-dependencies package -rf :$variant
