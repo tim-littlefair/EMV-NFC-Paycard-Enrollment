@@ -81,25 +81,25 @@ public class APDUObserver {
                 m_accountIdentifiers.remove(priorIncompleteAsc);
             } 
 
-            boolean entryFound;
-            do {
-                // As removal and reinsertion invalidates the iterator,
-                // we need to operate on one entry at a time until no 
-                // entries requiring attention are found.
-                entryFound = false;
-                for(EMVTagEntry ete: m_emvTagEntries) {
-                    if(ete.scope == null) {
-                        continue;
-                    } else if(ete.scope.equals(priorIncompleteAsc.toString())) {
-                        m_emvTagEntries.remove(ete);
-                        ete.scope = m_currentAppSelectionContext.toString();
-                        m_emvTagEntries.add(ete);
-                        entryFound = true;
-                        break;
-                    }
+            // As removal and reinsertion invalidates the iterator
+            // we use to scan the collection, we create a filtered 
+            // copy of the original list rather than trying to change 
+            // it directly.
+            TreeSet<EMVTagEntry> updatedEmvTagEntries = new TreeSet<EMVTagEntry>();
+            for(EMVTagEntry ete: m_emvTagEntries) {
+                if(
+                    ( ete.scope != null ) &&
+                    ( ete.scope.equals(priorIncompleteAsc.toString()) )
+                ) {
+                    // Update the scope on the item before copying it across
+                    ete.scope = m_currentAppSelectionContext.toString();
+                    updatedEmvTagEntries.add(ete);
+                } else {
+                    // Copy the item across unchanged
+                    updatedEmvTagEntries.add(ete);
                 }
             }
-            while(entryFound==true);
+            m_emvTagEntries = updatedEmvTagEntries;
 
             m_accountIdentifiers.put(
                 m_currentAppSelectionContext,
@@ -233,6 +233,9 @@ public class APDUObserver {
         int p1_p2 = BytesUtils.byteArrayToInt(cr.rawCommand,2,2);
         StringBuffer commandInterpretation = new StringBuffer();
 
+        ArrayList<Integer> acceptableStatusWordValues = new ArrayList<>();
+        acceptableStatusWordValues.add(new Integer(0x9000));
+
         switch(cla_ins) {
             case 0x00a4: {
                 int lengthOfExtraBytes = cr.rawCommand[4];
@@ -314,6 +317,15 @@ public class APDUObserver {
                 String tagHex = String.format("%X",p1_p2);
                 commandInterpretation.append("GET_DATA for tag " + tagHex);
                 cr.interpretedCommand = commandInterpretation.toString();
+
+                // It is acceptable to get status word 6A81 or 6A88 when 
+                // requesting tag 9F17 (this item reflects the ATC at the 
+                // most recent online tap handled, and is not set if there 
+                // has never been such a tap)
+                if (p1_p2 == 0x9F17) {
+                    acceptableStatusWordValues.add(new Integer(0x6A81));                    
+                    acceptableStatusWordValues.add(new Integer(0x6A88));                    
+                }
             }
             break;
 
@@ -330,13 +342,28 @@ public class APDUObserver {
             default:
                 cr.interpretedCommand = String.format("Unexpected CLA/INS %04x", cla_ins);
         }
-        // Some commands will have multi-line interpretations - for these, carName 
+
+        // Some commands will have multi-line interpretations - for these, cr.stepName 
         // should have been set to a single-line string before the first 
         // carriage return was inserted.
         // Otherwise, hopefully commandInterpretation contains a single line string
         // which we can use as the name of the command/response pair. 
         if(cr.stepName == null) {
             cr.stepName = commandInterpretation.toString();
+        }
+
+        // Check that the status word is one of the expected values
+        // (for most commands the expected value is 0x9000, but 
+        // GET DATA is expected to fail with 0x6892 if the 
+        // last online ATC has never been set)
+        int status_word = BytesUtils.byteArrayToInt(
+            cr.rawResponse,cr.rawResponse.length-2,2
+        );
+        if(!acceptableStatusWordValues.contains(status_word)) {
+            LOGGER.warn(String.format(
+                "Unexpected status word %04x for step %s",
+                status_word, cr.stepName
+            ));
         }
     }
 

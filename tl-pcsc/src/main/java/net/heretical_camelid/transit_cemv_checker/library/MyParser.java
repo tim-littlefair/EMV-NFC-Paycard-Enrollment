@@ -57,13 +57,27 @@ class MyParser extends EmvParser {
         // Invoke devnied's implementation first to fill all of the fields required by 
         // his EmvCard class
         boolean retval =  super.extractCommonsCardData(pGpo);
+        final byte[] aflBytes;
         if(retval == true) {
-            final byte[] aflBytes;
-            final byte[] rmt2Bytes = TlvUtil.getValue(pGpo, EmvTags.RESPONSE_MESSAGE_TEMPLATE_2);
-            if(rmt2Bytes != null) {
-                aflBytes = ArrayUtils.subarray(rmt2Bytes, 2, rmt2Bytes.length);
-            } else {
+            // My understanding of AFL discovery and parsing comes from:
+            // https://stackoverflow.com/questions/50157927/chip-emv-getting-afl-for-every-smart-card
+            if(pGpo[0] == (byte) 0x80) {
+                // Format 1, 0x80 should be followed by a single byte length indicator, 
+                // then two bytes of AIP, then AFL list.
+                // The length indicator covers AIP and AFL list and does not incude status word.
+                if(pGpo[1] == pGpo.length - 4) {
+                    aflBytes = ArrayUtils.subarray(pGpo, 4, pGpo.length - 2);
+                    LOGGER.debug("AFL bytes from RMT format 1: " + BytesUtils.bytesToString(aflBytes));
+                } else {
+                    aflBytes = null;
+                    LOGGER.error("Failed to decode RMT format 1: " + BytesUtils.bytesToString(pGpo));
+                }
+            } else if(pGpo[0] == (byte) 0x77) {
                 aflBytes = TlvUtil.getValue(pGpo, EmvTags.APPLICATION_FILE_LOCATOR);                
+                LOGGER.debug("AFL bytes from RMT format 2: " + BytesUtils.bytesToString(aflBytes));
+            } else {
+                LOGGER.error("Invalid RMT format - AFL bytes not found" + BytesUtils.bytesToString(pGpo));
+                aflBytes = null;
             }
             
             if(aflBytes != null) {
@@ -85,7 +99,7 @@ class MyParser extends EmvParser {
             } else {
                 // The AFL seems to be optional - 
                 // for some cards the GPO must return all tags required
-                LOGGER.warn("AFL not found in GPO response: " + BytesUtils.bytesToString(pGpo));
+                LOGGER.debug("AFL not found in GPO response: " + BytesUtils.bytesToString(pGpo));
             }
 
         } else {
