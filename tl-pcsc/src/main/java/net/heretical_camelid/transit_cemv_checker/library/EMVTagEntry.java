@@ -21,27 +21,6 @@ class EMVTagEntry implements Comparable<EMVTagEntry> {
     String scope = null;
     String valueHex = null;
 
-    String toXmlFragment(String indentString) {
-        StringBuffer xmlFragment = new StringBuffer();
-
-        xmlFragment.append(String.format(
-            "%s<emv_tag_entry tag=\"%s\"", indentString, tagHex
-        ));
-        if(source!=null) {
-            xmlFragment.append(String.format(" source=\"%s\"", source));
-        }
-        if(scope!=null) {
-            xmlFragment.append(String.format(" scope=\"%s\"", scope));
-        }
-        xmlFragment.append(">\n");
-        
-        xmlFragment.append(indentString + indentString + valueHex + "\n");
-        
-        xmlFragment.append(indentString + "</emv_tag_entry>\n");
-        
-        return xmlFragment.toString();
-    }
-
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[EMVTagEntry: tag=" + tagHex);

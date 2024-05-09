@@ -18,6 +18,7 @@ import com.github.devnied.emvnfccard.parser.IProvider;
 import com.github.devnied.emvnfccard.utils.TlvUtil;
 import com.github.devnied.emvnfccard.exception.CommunicationException;
 import com.github.devnied.emvnfccard.exception.TlvException;
+import com.github.devnied.emvnfccard.iso7816emv.EmvTags;
 import com.github.devnied.emvnfccard.iso7816emv.TLV;
 import com.github.devnied.emvnfccard.iso7816emv.TagAndLength;
 
@@ -529,9 +530,6 @@ public class APDUObserver {
             }
 
             if(captureOnly == false) {
-                for(EMVTagEntry eteItem: m_emvTagEntries) {
-                    xmlBuffer.append(eteItem.toXmlFragment(indentString));
-                }
 
                 for(AppSelectionContext asc: m_accountIdentifiers.keySet()) {
                     xmlBuffer.append(String.format(
@@ -539,6 +537,42 @@ public class APDUObserver {
                         indentString, asc, m_accountIdentifiers.get(asc)
                     ));
                 }
+
+                String currentTagHex = "";
+                for(EMVTagEntry eteItem: m_emvTagEntries) {
+                    if( !eteItem.tagHex.equals(currentTagHex) ) {
+                        if(currentTagHex.length()>0) {
+                            xmlBuffer.append(indentString + "</emv_tag>\n");
+                        }
+                        currentTagHex = eteItem.tagHex;
+                        String currentTagName = EmvTags.getNotNull(
+                            BytesUtils.fromString(currentTagHex)
+                        ).getName();
+                        xmlBuffer.append(String.format(
+                            "%s<emv_tag tag=\"%s\" name=\"%s\">\n",
+                            indentString, currentTagHex, currentTagName
+                        ));
+                        xmlBuffer.append(
+                            indentString + indentString + "<value"
+                        );
+                        if(eteItem.source!=null) {
+                            xmlBuffer.append(String.format(" source=\"%s\"", eteItem.source));
+                        }
+                        if(eteItem.scope!=null) {
+                            xmlBuffer.append(String.format(" scope=\"%s\"", eteItem.scope));
+                        }
+                        xmlBuffer.append(">\n");
+                        
+                        xmlBuffer.append(indentString + indentString + indentString + eteItem.valueHex + "\n");
+                        
+                        xmlBuffer.append(indentString + indentString + "</value>\n");
+                
+                    }
+                }
+                if(currentTagHex.length()>0) {
+                    xmlBuffer.append(indentString + "</emv_tag>\n");
+                }
+
             }
         }
 
