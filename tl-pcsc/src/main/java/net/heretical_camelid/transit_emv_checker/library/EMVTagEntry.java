@@ -1,4 +1,4 @@
-package net.heretical_camelid.transit_cemv_checker.library;
+package net.heretical_camelid.transit_emv_checker.library;
 
 /**
  * EMV tags can be sent in both commands and responses.
