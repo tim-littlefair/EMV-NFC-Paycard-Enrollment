@@ -64,7 +64,7 @@ public class Main {
 						//    for an undefined date.  I plan to raise a PR on devnied's
 						//    github project to tolerate this value in the same way the value
 						//    0x00 0x00 is tolerated.
-						.setReadCplc(true)
+						.setReadCplc(false)
 						// This application substitutes an alternate implementation of 
 						// the parser, see the comment on MyParser.extractCommonsCardData
 						// for why the local implementation is chosen over devnied's 
